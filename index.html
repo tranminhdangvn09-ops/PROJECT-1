@@ -1568,7 +1568,7 @@ Nội dung bài học:
 ${truncatedText}
 """`;
 
-            const apiKey = "";
+           let apiKey = localStorage.getItem("gemini_api_key"); if (!apiKey) { apiKey = prompt("Dán Google Gemini API Key của bạn vào đây:"); if (apiKey) localStorage.setItem("gemini_api_key", apiKey.trim()); }
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
 
             const payload = {
