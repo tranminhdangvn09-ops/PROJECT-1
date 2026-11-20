@@ -1,0 +1,2276 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartStudy Garden - Khu Vườn Học Tập & Trắc Nghiệm AI</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Quicksand & Nunito cho phong cách dễ thương, tròn trịa -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- PDF.js & Mammoth.js qua CDN để đọc file PDF & DOCX -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Nunito', 'Quicksand', 'sans-serif'],
+                        display: ['Quicksand', 'Nunito', 'sans-serif'],
+                    },
+                    colors: {
+                        mint: {
+                            50: '#f2fbf7',
+                            100: '#e1f7ec',
+                            200: '#c3eed9',
+                            300: '#94dfbd',
+                            400: '#5ec89b',
+                            500: '#36ad7e',
+                            600: '#258c65',
+                            700: '#1f7053',
+                            800: '#1b5944',
+                            900: '#174939',
+                        },
+                        cream: {
+                            50: '#fdfcf8',
+                            100: '#f8f6ee',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #eefaf3 0%, #f6fcf8 50%, #e6f6ec 100%);
+            color: #1b4332;
+            font-family: 'Nunito', sans-serif;
+        }
+        h1, h2, h3, h4, .font-cute {
+            font-family: 'Quicksand', sans-serif;
+        }
+        /* Thanh cuộn xanh lá pastel */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e1f7ec;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94dfbd;
+            border-radius: 999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #5ec89b;
+        }
+        .cute-card {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(12px);
+            border: 2px solid #d4f1e2;
+            box-shadow: 0 10px 25px -5px rgba(54, 173, 126, 0.08), 0 4px 10px -2px rgba(54, 173, 126, 0.04);
+        }
+        .cute-btn-shadow {
+            box-shadow: 0 4px 0 #1f7053;
+            transition: all 0.15s ease;
+        }
+        .cute-btn-shadow:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #1f7053;
+        }
+        @keyframes sway {
+            0%, 100% { transform: rotate(-2deg); }
+            50% { transform: rotate(2.5deg); }
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(0.9); }
+            100% { opacity: 0; transform: translateY(-45px) scale(1.2); }
+        }
+        @keyframes sparkle {
+            0%, 100% { opacity: 0.3; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+        .plant-sway {
+            transform-origin: bottom center;
+            animation: sway 3.5s ease-in-out infinite;
+        }
+        .float-effect {
+            animation: floatUp 1.1s ease-out forwards;
+        }
+        .sparkle-anim {
+            animation: sparkle 1.8s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-mint-300 selection:text-mint-900">
+
+    <!-- Toast / Message Box (Thay thế alert) -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- Modal Xác nhận tùy chỉnh -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-mint-900/40 backdrop-blur-sm p-4">
+        <div class="bg-white border-2 border-mint-200 rounded-3xl max-w-md w-full p-6 shadow-2xl transform transition-all">
+            <div class="flex items-center gap-3 text-amber-500 mb-3">
+                <div class="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center">
+                    <i data-lucide="alert-circle" class="w-6 h-6"></i>
+                </div>
+                <h3 id="confirm-title" class="text-lg font-bold text-mint-900">Xác nhận thao tác</h3>
+            </div>
+            <p id="confirm-message" class="text-mint-800/80 text-sm mb-6 leading-relaxed">Bạn có chắc chắn muốn thực hiện hành động này?</p>
+            <div class="flex justify-end gap-3">
+                <button id="confirm-cancel-btn" class="px-5 py-2.5 rounded-2xl bg-mint-100 hover:bg-mint-200 text-mint-800 text-sm font-bold transition">Hủy bỏ</button>
+                <button id="confirm-ok-btn" class="px-5 py-2.5 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold transition">Đồng ý</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header / Navbar -->
+    <header class="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b-2 border-mint-200/80">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+            <!-- Logo -->
+            <div class="flex items-center gap-3 cursor-pointer" onclick="switchTab('garden')">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-mint-400 to-emerald-500 flex items-center justify-center shadow-md shadow-mint-400/30 text-white">
+                    <i data-lucide="sprout" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg tracking-tight text-mint-900 leading-none flex items-center gap-1.5">
+                        SmartStudy <span class="text-mint-600">Garden</span>
+                    </h1>
+                    <p class="text-[11px] font-semibold text-mint-600/80 mt-0.5 hidden sm:block">Học vui mỗi ngày • Trồng cây tri thức</p>
+                </div>
+            </div>
+
+            <!-- Thanh điều hướng chính (Desktop) -->
+            <nav class="hidden md:flex items-center bg-mint-100/80 p-1.5 rounded-2xl border border-mint-200">
+                <button onclick="switchTab('garden')" id="nav-garden" class="nav-btn active flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition bg-mint-500 text-white shadow-sm">
+                    <i data-lucide="flower-2" class="w-4 h-4"></i> Khu vườn & Nhiệm vụ
+                    <span id="quest-ready-dot" class="hidden w-2 h-2 rounded-full bg-amber-300 animate-ping"></span>
+                </button>
+                <button onclick="switchTab('create')" id="nav-create" class="nav-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-mint-700 hover:text-mint-900 hover:bg-white/60 transition">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i> Tạo đề AI
+                </button>
+                <button onclick="switchTab('library')" id="nav-library" class="nav-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-mint-700 hover:text-mint-900 hover:bg-white/60 transition">
+                    <i data-lucide="book-heart" class="w-4 h-4"></i> Kho bộ đề
+                    <span id="deck-count-badge" class="ml-0.5 px-2 py-0.5 text-xs rounded-full bg-mint-200 text-mint-800">0</span>
+                </button>
+                <button onclick="switchTab('reminder')" id="nav-reminder" class="nav-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-mint-700 hover:text-mint-900 hover:bg-white/60 transition">
+                    <i data-lucide="bell-ring" class="w-4 h-4"></i> Nhắc học
+                </button>
+            </nav>
+
+            <!-- Tài nguyên khu vườn (Giọt nước, Ánh nắng, Streak) -->
+            <div class="flex items-center gap-2 sm:gap-2.5">
+                <!-- Giọt nước -->
+                <div onclick="switchTab('garden')" class="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-sky-50 border-2 border-sky-200 text-sky-700 hover:bg-sky-100 transition" title="Giọt nước dùng để tưới cây">
+                    <i data-lucide="droplets" class="w-4 h-4 text-sky-500 fill-sky-400"></i>
+                    <span id="header-water-count" class="font-extrabold text-sm">0</span>
+                </div>
+
+                <!-- Ánh nắng -->
+                <div onclick="switchTab('garden')" class="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-amber-50 border-2 border-amber-200 text-amber-700 hover:bg-amber-100 transition" title="Ánh nắng giúp cây quang hợp">
+                    <i data-lucide="sun" class="w-4 h-4 text-amber-500 fill-amber-400"></i>
+                    <span id="header-sun-count" class="font-extrabold text-sm">0</span>
+                </div>
+
+                <!-- Badge Streak -->
+                <div onclick="switchTab('reminder')" class="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-orange-50 border-2 border-orange-200 text-orange-700 hover:bg-orange-100 transition" title="Chuỗi ngày học liên tục">
+                    <i data-lucide="flame" class="w-4 h-4 fill-orange-500 text-orange-500"></i>
+                    <span id="header-streak-count" class="font-extrabold text-sm">0</span>
+                </div>
+
+                <!-- Avatar -->
+                <div class="hidden lg:flex items-center gap-2 pl-2 border-l-2 border-mint-100">
+                    <img id="user-avatar" src="https://api.dicebear.com/7.x/bottts-neutral/svg?seed=MintGarden" alt="Avatar" class="w-9 h-9 rounded-2xl bg-mint-100 border-2 border-mint-300">
+                    <div class="text-left">
+                        <div id="user-display-name" class="text-xs font-bold text-mint-900 truncate max-w-[110px]">Nhà làm vườn</div>
+                        <div id="user-sync-status" class="text-[10px] font-semibold text-mint-600 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-mint-500 inline-block"></span> Đã lưu mây
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thanh điều hướng Mobile -->
+        <div class="flex md:hidden border-t border-mint-200 bg-white/95 px-2 py-1.5 justify-around">
+            <button onclick="switchTab('garden')" id="mob-nav-garden" class="mob-nav-btn flex-1 flex flex-col items-center py-1 rounded-xl text-xs font-bold text-mint-600">
+                <i data-lucide="flower-2" class="w-4 h-4 mb-0.5"></i> Khu vườn
+            </button>
+            <button onclick="switchTab('create')" id="mob-nav-create" class="mob-nav-btn flex-1 flex flex-col items-center py-1 rounded-xl text-xs font-bold text-mint-800/60">
+                <i data-lucide="sparkles" class="w-4 h-4 mb-0.5"></i> Tạo đề AI
+            </button>
+            <button onclick="switchTab('library')" id="mob-nav-library" class="mob-nav-btn flex-1 flex flex-col items-center py-1 rounded-xl text-xs font-bold text-mint-800/60">
+                <i data-lucide="book-heart" class="w-4 h-4 mb-0.5"></i> Kho đề
+            </button>
+            <button onclick="switchTab('reminder')" id="mob-nav-reminder" class="mob-nav-btn flex-1 flex flex-col items-center py-1 rounded-xl text-xs font-bold text-mint-800/60">
+                <i data-lucide="bell-ring" class="w-4 h-4 mb-0.5"></i> Nhắc học
+            </button>
+        </div>
+    </header>
+
+    <!-- Nội dung chính -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+        <!-- ==================== TAB 0: KHU VƯỜN HỌC TẬP & NHIỆM VỤ HÀNG NGÀY ==================== -->
+        <section id="tab-garden" class="space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-mint-900 flex items-center gap-2">
+                        Khu vườn tri thức của bạn 🌿
+                    </h2>
+                    <p class="text-sm text-mint-700 mt-1">Trả lời đúng câu hỏi và hoàn thành nhiệm vụ mỗi ngày để nhận nước & ánh nắng nuôi cây lớn nhé!</p>
+                </div>
+                <button onclick="switchTab('create')" class="self-start sm:self-auto px-5 py-3 rounded-2xl bg-mint-500 hover:bg-mint-600 text-white font-bold text-sm cute-btn-shadow flex items-center gap-2">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i> Học ngay để kiếm nước
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Cột trái (7 cột): Khu vườn SVG tương tác -->
+                <div class="lg:col-span-7 space-y-5">
+                    <div class="cute-card rounded-3xl p-5 sm:p-6 relative overflow-hidden">
+                        <!-- Thanh thông tin cây đang trồng -->
+                        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                            <div class="flex items-center gap-3">
+                                <span id="plant-emoji-badge" class="w-11 h-11 rounded-2xl bg-mint-100 border-2 border-mint-200 flex items-center justify-center text-2xl">🌱</span>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h3 id="current-plant-name" class="font-bold text-lg text-mint-900">Cây Mầm Xanh</h3>
+                                        <span id="plant-stage-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-mint-200/80 text-mint-800">Giai đoạn 1/5</span>
+                                    </div>
+                                    <p id="plant-stage-desc" class="text-xs font-semibold text-mint-600">Hạt giống vừa nảy mầm, đang chờ giọt nước đầu tiên!</p>
+                                </div>
+                            </div>
+
+                            <!-- Nút đổi hạt giống -->
+                            <button onclick="toggleSeedSelector()" class="px-3.5 py-2 rounded-2xl bg-mint-100 hover:bg-mint-200 text-mint-800 text-xs font-bold flex items-center gap-1.5 transition">
+                                <i data-lucide="sprout" class="w-4 h-4"></i> Đổi loài cây
+                            </button>
+                        </div>
+
+                        <!-- Bảng chọn loài cây (Ẩn/Hiện) -->
+                        <div id="seed-selector-panel" class="hidden mb-4 p-4 rounded-2xl bg-mint-50 border-2 border-mint-200 space-y-2.5">
+                            <div class="text-xs font-bold text-mint-800 uppercase tracking-wider">Chọn hạt giống muốn trồng:</div>
+                            <div id="species-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                                <!-- Render danh sách loài cây bằng JS -->
+                            </div>
+                        </div>
+
+                        <!-- Khung cảnh Khu Vườn SVG -->
+                        <div class="relative w-full h-72 sm:h-80 rounded-3xl overflow-hidden border-2 border-mint-200 bg-gradient-to-b from-sky-100 via-emerald-50 to-mint-200 flex items-end justify-center select-none">
+                            <!-- Hiệu ứng nổi khi tưới nước / bón nắng -->
+                            <div id="garden-floating-effects" class="absolute inset-0 pointer-events-none z-20 flex items-center justify-center"></div>
+
+                            <!-- SVG Khu vườn -->
+                            <svg id="garden-svg" viewBox="0 0 500 300" class="w-full h-full">
+                                <defs>
+                                    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#dcf5ff" />
+                                        <stop offset="100%" stop-color="#effcf4" />
+                                    </linearGradient>
+                                    <linearGradient id="hillGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#86efac" />
+                                        <stop offset="100%" stop-color="#4ade80" />
+                                    </linearGradient>
+                                    <linearGradient id="potGrad" x1="0" y1="0" x2="1" y2="0">
+                                        <stop offset="0%" stop-color="#f59e0b" />
+                                        <stop offset="50%" stop-color="#fbbf24" />
+                                        <stop offset="100%" stop-color="#d97706" />
+                                    </linearGradient>
+                                </defs>
+
+                                <!-- Bầu trời -->
+                                <rect width="500" height="300" fill="url(#skyGrad)" />
+
+                                <!-- Ông mặt trời dễ thương -->
+                                <g transform="translate(425, 52)">
+                                    <circle cx="0" cy="0" r="24" fill="#fde047" opacity="0.4" class="sparkle-anim" />
+                                    <circle cx="0" cy="0" r="17" fill="#facc15" />
+                                    <circle cx="-5" cy="-2" r="2" fill="#854d0e" />
+                                    <circle cx="5" cy="-2" r="2" fill="#854d0e" />
+                                    <path d="M -4 4 Q 0 8 4 4" stroke="#854d0e" stroke-width="1.8" fill="none" stroke-linecap="round" />
+                                </g>
+
+                                <!-- Đám mây bồng bềnh -->
+                                <g fill="#ffffff" opacity="0.85">
+                                    <circle cx="85" cy="55" r="16" />
+                                    <circle cx="105" cy="50" r="20" />
+                                    <circle cx="125" cy="56" r="15" />
+                                    <rect x="85" y="55" width="40" height="16" rx="8" />
+                                </g>
+                                <g fill="#ffffff" opacity="0.7" transform="translate(210, -15) scale(0.8)">
+                                    <circle cx="85" cy="55" r="16" />
+                                    <circle cx="105" cy="50" r="20" />
+                                    <circle cx="125" cy="56" r="15" />
+                                </g>
+
+                                <!-- Đồi cỏ phía sau -->
+                                <path d="M -20 245 Q 130 195 270 235 T 520 220 L 520 300 L -20 300 Z" fill="#bbf7d0" />
+                                <path d="M -20 260 Q 250 220 520 265 L 520 300 L -20 300 Z" fill="url(#hillGrad)" />
+
+                                <!-- Hàng rào gỗ trắng nhỏ xinh -->
+                                <g fill="#ffffff" stroke="#d1fae5" stroke-width="1.5">
+                                    <rect x="45" y="218" width="10" height="32" rx="4" />
+                                    <rect x="70" y="218" width="10" height="32" rx="4" />
+                                    <rect x="95" y="218" width="10" height="32" rx="4" />
+                                    <rect x="40" y="226" width="70" height="6" rx="3" />
+                                    <rect x="40" y="238" width="70" height="6" rx="3" />
+                                </g>
+
+                                <!-- Cái cây động (Sẽ được vẽ lại bằng JS theo loài cây & giai đoạn) -->
+                                <g id="dynamic-plant-group" class="plant-sway"></g>
+
+                                <!-- Chậu đất nung dễ thương ở trung tâm -->
+                                <g transform="translate(250, 255)">
+                                    <!-- Bóng dưới chậu -->
+                                    <ellipse cx="0" cy="24" rx="48" ry="8" fill="#166534" opacity="0.2" />
+                                    <!-- Thân chậu -->
+                                    <polygon points="-36,-15 36,-15 28,22 -28,22" fill="url(#potGrad)" rx="6" />
+                                    <!-- Miệng chậu -->
+                                    <rect x="-42" y="-23" width="84" height="11" rx="5.5" fill="#fbbf24" stroke="#d97706" stroke-width="1.5" />
+                                    <!-- Mặt cười trên chậu -->
+                                    <circle cx="-10" cy="2" r="2.2" fill="#78350f" />
+                                    <circle cx="10" cy="2" r="2.2" fill="#78350f" />
+                                    <ellipse cx="-15" cy="5" rx="3.5" ry="2" fill="#f43f5e" opacity="0.45" />
+                                    <ellipse cx="15" cy="5" rx="3.5" ry="2" fill="#f43f5e" opacity="0.45" />
+                                    <path d="M -4 6 Q 0 10 4 6" stroke="#78350f" stroke-width="2" fill="none" stroke-linecap="round" />
+                                </g>
+                            </svg>
+
+                            <!-- Nút thu hoạch khi cây đạt cấp tối đa -->
+                            <div id="harvest-overlay" class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-10">
+                                <button onclick="harvestMaturePlant()" class="px-5 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-amber-950 font-extrabold text-sm shadow-lg animate-bounce flex items-center gap-2">
+                                    <i data-lucide="award" class="w-4 h-4"></i> Thu hoạch cây trưởng thành!
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Thanh tiến độ EXP của cây & Nút chăm sóc -->
+                        <div class="mt-5 space-y-4">
+                            <div>
+                                <div class="flex justify-between text-xs font-bold mb-1.5">
+                                    <span class="text-mint-800">Độ trưởng thành của cây</span>
+                                    <span id="plant-exp-text" class="text-mint-600">0 / 100 EXP</span>
+                                </div>
+                                <div class="w-full h-4 bg-mint-100 rounded-full p-1 border border-mint-200 overflow-hidden">
+                                    <div id="plant-exp-bar" class="h-full rounded-full bg-gradient-to-r from-mint-400 to-emerald-500 transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <!-- 2 Nút Tưới nước & Quang hợp -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <button onclick="nurturePlant('water')" class="p-3.5 rounded-2xl bg-sky-50 hover:bg-sky-100 border-2 border-sky-200 flex items-center justify-between transition group active:scale-[0.98]">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-xl bg-sky-400 text-white flex items-center justify-center shadow-sm group-hover:scale-110 transition">
+                                            <i data-lucide="droplets" class="w-5 h-5"></i>
+                                        </div>
+                                        <div class="text-left">
+                                            <div class="text-sm font-extrabold text-sky-900">Tưới nước (+15 EXP)</div>
+                                            <div class="text-xs font-semibold text-sky-600">Tiêu tốn 1 giọt nước</div>
+                                        </div>
+                                    </div>
+                                    <span id="btn-water-badge" class="px-2.5 py-1 rounded-xl bg-white text-sky-700 font-extrabold text-xs border border-sky-200">0 💧</span>
+                                </button>
+
+                                <button onclick="nurturePlant('sun')" class="p-3.5 rounded-2xl bg-amber-50 hover:bg-amber-100 border-2 border-amber-200 flex items-center justify-between transition group active:scale-[0.98]">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-xl bg-amber-400 text-white flex items-center justify-center shadow-sm group-hover:scale-110 transition">
+                                            <i data-lucide="sun" class="w-5 h-5"></i>
+                                        </div>
+                                        <div class="text-left">
+                                            <div class="text-sm font-extrabold text-amber-900">Tắm nắng (+25 EXP)</div>
+                                            <div class="text-xs font-semibold text-amber-600">Tiêu tốn 1 ánh nắng</div>
+                                        </div>
+                                    </div>
+                                    <span id="btn-sun-badge" class="px-2.5 py-1 rounded-xl bg-white text-amber-700 font-extrabold text-xs border border-amber-200">0 ☀️</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bộ sưu tập cây đã trồng trưởng thành -->
+                    <div class="cute-card rounded-3xl p-5">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-bold text-base text-mint-900 flex items-center gap-2">
+                                <i data-lucide="trees" class="w-5 h-5 text-mint-600"></i> Nhà kính sưu tầm cây trưởng thành
+                            </h3>
+                            <span id="harvested-total-badge" class="px-3 py-1 rounded-full bg-mint-100 text-mint-800 text-xs font-bold">0 cây</span>
+                        </div>
+                        <div id="harvested-collection-grid" class="flex flex-wrap gap-2.5">
+                            <p class="text-xs text-mint-600/80 italic">Chưa có cây nào trưởng thành hoàn toàn. Hãy chăm chỉ ôn bài để thu hoạch cây đầu tiên nhé!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cột phải (5 cột): Nhiệm vụ hàng ngày (Daily Quests) -->
+                <div class="lg:col-span-5 space-y-5">
+                    <div class="cute-card rounded-3xl p-5 sm:p-6 space-y-4">
+                        <div class="flex items-center justify-between border-b-2 border-mint-100 pb-3.5">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-10 h-10 rounded-2xl bg-mint-100 text-mint-600 flex items-center justify-center">
+                                    <i data-lucide="clipboard-check" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-lg text-mint-900">Nhiệm vụ hàng ngày</h3>
+                                    <p class="text-xs font-semibold text-mint-600">Làm mới mỗi ngày mới • Nhận quà tưới cây</p>
+                                </div>
+                            </div>
+                            <span id="quest-completion-pill" class="px-3 py-1 rounded-full bg-mint-100 text-mint-800 text-xs font-extrabold">0/4</span>
+                        </div>
+
+                        <!-- Danh sách 4 nhiệm vụ hàng ngày -->
+                        <div id="daily-quests-list" class="space-y-3">
+                            <!-- Render bằng JS -->
+                        </div>
+
+                        <!-- Mẹo nhỏ kiếm tài nguyên -->
+                        <div class="p-4 rounded-2xl bg-mint-50 border border-mint-200 flex items-start gap-3">
+                            <span class="text-xl">💡</span>
+                            <div class="text-xs text-mint-800 leading-relaxed">
+                                <strong>Cách nhận tài nguyên:</strong> Mỗi câu trắc nghiệm trả lời đúng tặng ngay <strong>+1 Giọt nước 💧</strong>. Hoàn thành cả bài thi tặng thêm <strong>+1 Ánh nắng ☀️</strong>!
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 1: TẠO ĐỀ TRẮC NGHIỆM BẰNG AI ==================== -->
+        <section id="tab-create" class="hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-mint-900">Tạo đề trắc nghiệm từ tài liệu ✨</h2>
+                    <p class="text-sm text-mint-700 mt-1">Tải lên file bài học hoặc dán nội dung, AI sẽ tự động phân tích và tạo câu hỏi ôn tập.</p>
+                </div>
+                <!-- Mini Countdown Nhắc học -->
+                <div onclick="switchTab('reminder')" class="cursor-pointer self-start sm:self-auto flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white border-2 border-mint-200 hover:border-mint-400 transition shadow-sm">
+                    <i data-lucide="clock" class="w-4 h-4 text-mint-600"></i>
+                    <div class="text-xs font-bold">
+                        <span class="text-mint-700">Giờ học tiếp theo: </span>
+                        <span id="mini-countdown" class="font-mono font-extrabold text-mint-600">--:--:--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Cột trái: Nhập liệu & Upload File -->
+                <div class="lg:col-span-2 space-y-4">
+                    <div class="cute-card rounded-3xl p-5 sm:p-6 space-y-4">
+                        <!-- Tên bài học / Môn học -->
+                        <div>
+                            <label class="block text-xs font-extrabold uppercase tracking-wider text-mint-700 mb-1.5">Tên bài học / Chủ đề ôn tập</label>
+                            <input type="text" id="quiz-title-input" placeholder="Ví dụ: Chương 1 - Sinh học tế bào hoặc Từ vựng Tiếng Anh..." class="w-full px-4 py-3 rounded-2xl bg-mint-50/70 border-2 border-mint-200 text-mint-900 placeholder-mint-400 text-sm font-semibold focus:outline-none focus:border-mint-500 focus:bg-white transition">
+                        </div>
+
+                        <!-- Vùng kéo thả / Upload file -->
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="block text-xs font-extrabold uppercase tracking-wider text-mint-700">Tải lên tài liệu (.txt, .md, .pdf, .docx)</label>
+                                <span id="file-status-badge" class="text-xs font-bold text-mint-600 hidden"></span>
+                            </div>
+                            <label id="drop-zone" class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-mint-300 hover:border-mint-500 rounded-3xl cursor-pointer bg-mint-50/60 hover:bg-mint-100/60 transition group">
+                                <div class="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+                                    <div class="p-2.5 rounded-2xl bg-mint-200/70 text-mint-700 group-hover:scale-110 transition mb-2">
+                                        <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                                    </div>
+                                    <p class="text-sm text-mint-900 font-bold">Nhấn để chọn file hoặc kéo thả vào đây</p>
+                                    <p class="text-xs text-mint-600 mt-1">Hỗ trợ đọc trực tiếp PDF, Word (.docx), Markdown (.md), Text (.txt)</p>
+                                </div>
+                                <input id="file-upload-input" type="file" accept=".txt,.md,.pdf,.docx" class="hidden" />
+                            </label>
+                        </div>
+
+                        <!-- Khung soạn thảo nội dung bài học -->
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="block text-xs font-extrabold uppercase tracking-wider text-mint-700">Nội dung bài học (Có thể chỉnh sửa trực tiếp)</label>
+                                <div class="flex items-center gap-3">
+                                    <span id="char-count" class="text-xs font-semibold text-mint-600">0 ký tự</span>
+                                    <button onclick="fillSampleContent()" class="text-xs font-bold text-mint-600 hover:text-mint-800 underline">Dùng bài mẫu thử nghiệm</button>
+                                    <button onclick="clearContent()" class="text-xs font-bold text-rose-500 hover:text-rose-600">Xóa</button>
+                                </div>
+                            </div>
+                            <textarea id="lesson-content-input" rows="8" placeholder="Dán nội dung bài giảng, ghi chú, hoặc tải file phía trên để tự động trích xuất chữ vào đây..." class="w-full p-4 rounded-2xl bg-mint-50/70 border-2 border-mint-200 text-mint-900 placeholder-mint-400 text-sm leading-relaxed focus:outline-none focus:border-mint-500 focus:bg-white transition"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cột phải: Cấu hình tạo đề -->
+                <div class="space-y-4">
+                    <div class="cute-card rounded-3xl p-5 sm:p-6 space-y-5">
+                        <div class="flex items-center gap-2 border-b-2 border-mint-100 pb-3">
+                            <i data-lucide="sliders-horizontal" class="w-5 h-5 text-mint-600"></i>
+                            <h3 class="font-bold text-mint-900">Cấu hình đề trắc nghiệm</h3>
+                        </div>
+
+                        <!-- Số lượng câu hỏi -->
+                        <div>
+                            <label class="block text-xs font-extrabold uppercase tracking-wider text-mint-700 mb-2">Số lượng câu hỏi</label>
+                            <div class="grid grid-cols-4 gap-2" id="num-questions-group">
+                                <button type="button" data-val="5" class="q-count-btn py-2.5 rounded-2xl text-sm font-extrabold border-2 border-mint-500 bg-mint-100 text-mint-800 transition">5 câu</button>
+                                <button type="button" data-val="10" class="q-count-btn py-2.5 rounded-2xl text-sm font-bold border-2 border-mint-200 bg-white text-mint-600 hover:border-mint-400 transition">10 câu</button>
+                                <button type="button" data-val="15" class="q-count-btn py-2.5 rounded-2xl text-sm font-bold border-2 border-mint-200 bg-white text-mint-600 hover:border-mint-400 transition">15 câu</button>
+                                <button type="button" data-val="20" class="q-count-btn py-2.5 rounded-2xl text-sm font-bold border-2 border-mint-200 bg-white text-mint-600 hover:border-mint-400 transition">20 câu</button>
+                            </div>
+                        </div>
+
+                        <!-- Mức độ nhận thức -->
+                        <div>
+                            <label class="block text-xs font-extrabold uppercase tracking-wider text-mint-700 mb-2">Mức độ câu hỏi</label>
+                            <div class="space-y-2.5" id="difficulty-group">
+                                <button type="button" data-val="Cơ bản" class="diff-btn w-full flex items-center justify-between p-3.5 rounded-2xl border-2 border-mint-500 bg-mint-100/80 text-left transition">
+                                    <div>
+                                        <div class="text-sm font-extrabold text-mint-900">Cơ bản (Nhận biết)</div>
+                                        <div class="text-xs font-semibold text-mint-700">Ghi nhớ khái niệm, định nghĩa chính</div>
+                                    </div>
+                                    <i data-lucide="check-circle-2" class="w-5 h-5 text-mint-600 diff-icon"></i>
+                                </button>
+                                <button type="button" data-val="Thông hiểu" class="diff-btn w-full flex items-center justify-between p-3.5 rounded-2xl border-2 border-mint-200 bg-white text-left hover:border-mint-400 transition">
+                                    <div>
+                                        <div class="text-sm font-bold text-mint-900">Thông hiểu</div>
+                                        <div class="text-xs text-mint-600">So sánh, giải thích bản chất vấn đề</div>
+                                    </div>
+                                    <i data-lucide="circle" class="w-5 h-5 text-mint-300 diff-icon"></i>
+                                </button>
+                                <button type="button" data-val="Vận dụng" class="diff-btn w-full flex items-center justify-between p-3.5 rounded-2xl border-2 border-mint-200 bg-white text-left hover:border-mint-400 transition">
+                                    <div>
+                                        <div class="text-sm font-bold text-mint-900">Vận dụng & Phân tích</div>
+                                        <div class="text-xs text-mint-600">Tình huống thực tế, suy luận tổng hợp</div>
+                                    </div>
+                                    <i data-lucide="circle" class="w-5 h-5 text-mint-300 diff-icon"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Nút Tạo Đề -->
+                        <button id="generate-quiz-btn" onclick="generateQuizWithAI()" class="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-mint-500 to-emerald-500 hover:from-mint-600 hover:to-emerald-600 text-white font-extrabold text-sm cute-btn-shadow flex items-center justify-center gap-2">
+                            <i data-lucide="sparkles" class="w-5 h-5"></i>
+                            <span>Tạo đề trắc nghiệm bằng AI</span>
+                        </button>
+
+                        <!-- Trạng thái Loading AI -->
+                        <div id="ai-loading-box" class="hidden p-4 rounded-2xl bg-mint-100/80 border-2 border-mint-300 text-center space-y-2">
+                            <div class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white text-mint-600 animate-spin shadow-sm">
+                                <i data-lucide="loader-2" class="w-5 h-5"></i>
+                            </div>
+                            <p class="text-sm font-bold text-mint-900">AI đang đọc tài liệu & gieo hạt câu hỏi...</p>
+                            <p class="text-xs text-mint-700">Chờ một xíu nhé, khoảng 5 - 12 giây thôi!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 2: GIAO DIỆN LÀM BÀI TRẮC NGHIỆM ==================== -->
+        <section id="tab-quiz" class="hidden space-y-6">
+            <!-- Thanh thông tin bài thi -->
+            <div class="cute-card rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex items-start gap-3">
+                    <button onclick="switchTab('library')" class="p-2.5 rounded-2xl bg-mint-100 hover:bg-mint-200 text-mint-800 transition mt-0.5" title="Quay lại">
+                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                    </button>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h2 id="active-quiz-title" class="text-lg sm:text-xl font-bold text-mint-900">Tên bộ đề</h2>
+                            <span id="active-quiz-badge" class="px-3 py-0.5 rounded-full text-xs font-bold bg-mint-200 text-mint-800">Cơ bản</span>
+                        </div>
+                        <p id="active-quiz-meta" class="text-xs font-semibold text-mint-600 mt-1">Đã chọn 0 / 10 câu hỏi</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2.5 self-end sm:self-center flex-wrap">
+                    <button id="retry-wrong-btn" onclick="startRetryWrongQuestions()" class="hidden px-4 py-2.5 rounded-2xl bg-amber-100 hover:bg-amber-200 text-amber-800 border-2 border-amber-300 text-sm font-bold flex items-center gap-2 transition">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Làm lại câu sai (<span id="wrong-count-label">0</span>)
+                    </button>
+                    <button id="retake-all-btn" onclick="resetCurrentQuiz()" class="hidden px-4 py-2.5 rounded-2xl bg-mint-100 hover:bg-mint-200 text-mint-800 text-sm font-bold flex items-center gap-2 transition">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i> Làm lại từ đầu
+                    </button>
+                    <button id="submit-quiz-btn" onclick="submitQuiz()" class="px-5 py-2.5 rounded-2xl bg-mint-500 hover:bg-mint-600 text-white text-sm font-extrabold cute-btn-shadow flex items-center gap-2">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i> Nộp bài & Nhận thưởng
+                    </button>
+                </div>
+            </div>
+
+            <!-- Bảng kết quả sau khi nộp bài -->
+            <div id="quiz-result-banner" class="hidden cute-card rounded-3xl p-6 border-mint-300 bg-gradient-to-r from-mint-100/90 via-white to-emerald-100/80">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div class="flex items-center gap-5">
+                        <div class="w-20 h-20 rounded-3xl bg-white border-2 border-mint-400 flex flex-col items-center justify-center shadow-md">
+                            <span id="result-score-text" class="text-2xl font-extrabold text-mint-600">8.0</span>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-mint-500">Điểm số</span>
+                        </div>
+                        <div>
+                            <h3 id="result-headline" class="text-xl font-bold text-mint-900">Hoàn thành xuất sắc!</h3>
+                            <p id="result-subtext" class="text-sm font-semibold text-mint-700 mt-1">Bạn trả lời đúng 8/10 câu hỏi.</p>
+                            <!-- Huy hiệu phần thưởng nhận được -->
+                            <div id="quiz-rewards-earned" class="flex flex-wrap items-center gap-2.5 mt-2.5 text-xs font-extrabold">
+                                <span class="px-3 py-1 rounded-xl bg-sky-100 text-sky-700 border border-sky-200 flex items-center gap-1">
+                                    💧 +<span id="reward-water-earned">0</span> Giọt nước
+                                </span>
+                                <span class="px-3 py-1 rounded-xl bg-amber-100 text-amber-700 border border-amber-200 flex items-center gap-1">
+                                    ☀️ +<span id="reward-sun-earned">1</span> Ánh nắng
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-3 w-full md:w-auto justify-end">
+                        <button onclick="switchTab('garden')" class="flex-1 md:flex-initial px-4 py-2.5 rounded-2xl bg-mint-500 hover:bg-mint-600 text-white font-bold text-sm flex items-center justify-center gap-2 transition shadow-sm">
+                            <i data-lucide="sprout" class="w-4 h-4"></i> Vào vườn tưới cây
+                        </button>
+                        <button id="banner-retry-wrong-btn" onclick="startRetryWrongQuestions()" class="hidden flex-1 md:flex-initial px-4 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-amber-950 font-bold text-sm flex items-center justify-center gap-2 transition">
+                            <i data-lucide="target" class="w-4 h-4"></i> Ôn lại câu sai
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danh sách câu hỏi -->
+            <div id="questions-container" class="space-y-5">
+                <!-- Các thẻ câu hỏi sẽ được render bằng JavaScript -->
+            </div>
+        </section>
+
+        <!-- ==================== TAB 3: QUẢN LÝ BỘ ĐỀ & LỊCH SỬ HỌC TẬP ==================== -->
+        <section id="tab-library" class="hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-mint-900">Kho bộ đề & Lịch sử học tập 📚</h2>
+                    <p class="text-sm text-mint-700 mt-1">Toàn bộ các bộ đề đã tạo được lưu trữ tự động để bạn ôn tập mọi lúc.</p>
+                </div>
+                <button onclick="switchTab('create')" class="self-start sm:self-auto px-5 py-2.5 rounded-2xl bg-mint-500 hover:bg-mint-600 text-white text-sm font-bold cute-btn-shadow flex items-center gap-2">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Tạo bộ đề mới
+                </button>
+            </div>
+
+            <!-- Thống kê nhanh -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="cute-card rounded-3xl p-4">
+                    <div class="text-xs font-bold text-mint-600">Tổng số bộ đề</div>
+                    <div id="stat-total-decks" class="text-2xl font-extrabold text-mint-900 mt-1">0</div>
+                </div>
+                <div class="cute-card rounded-3xl p-4">
+                    <div class="text-xs font-bold text-mint-600">Lượt đã làm bài</div>
+                    <div id="stat-total-attempts" class="text-2xl font-extrabold text-emerald-600 mt-1">0</div>
+                </div>
+                <div class="cute-card rounded-3xl p-4">
+                    <div class="text-xs font-bold text-mint-600">Điểm trung bình</div>
+                    <div id="stat-avg-score" class="text-2xl font-extrabold text-teal-600 mt-1">--</div>
+                </div>
+                <div class="cute-card rounded-3xl p-4">
+                    <div class="text-xs font-bold text-mint-600">Chuỗi ngày học</div>
+                    <div id="stat-streak-days" class="text-2xl font-extrabold text-orange-500 mt-1">0 ngày</div>
+                </div>
+            </div>
+
+            <!-- Tìm kiếm bộ đề -->
+            <div class="relative">
+                <i data-lucide="search" class="w-4 h-4 text-mint-500 absolute left-4 top-1/2 -translate-y-1/2"></i>
+                <input type="text" id="search-deck-input" oninput="renderLibrary()" placeholder="Tìm kiếm bộ đề theo tên bài học..." class="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white border-2 border-mint-200 text-sm font-semibold text-mint-900 placeholder-mint-400 focus:outline-none focus:border-mint-500">
+            </div>
+
+            <!-- Danh sách thẻ bộ đề -->
+            <div id="decks-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <!-- Render bằng JS -->
+            </div>
+
+            <!-- Trạng thái trống -->
+            <div id="empty-library-state" class="hidden cute-card rounded-3xl p-12 text-center space-y-3">
+                <div class="w-16 h-16 rounded-3xl bg-mint-100 border-2 border-mint-200 flex items-center justify-center mx-auto text-mint-600">
+                    <i data-lucide="book-open" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-lg font-bold text-mint-900">Chưa có bộ đề nào được lưu</h3>
+                <p class="text-sm text-mint-700 max-w-md mx-auto">Hãy tải lên tài liệu hoặc dán nội dung bài học đầu tiên để AI tạo đề trắc nghiệm cho bạn.</p>
+                <button onclick="switchTab('create')" class="mt-2 px-5 py-2.5 rounded-2xl bg-mint-500 hover:bg-mint-600 text-white text-sm font-bold transition">
+                    Bắt đầu tạo đề ngay
+                </button>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 4: NHẮC NHỞ HỌC BÀI & STREAK ==================== -->
+        <section id="tab-reminder" class="hidden space-y-6">
+            <div>
+                <h2 class="text-2xl sm:text-3xl font-bold text-mint-900">Nhắc nhở học bài & Theo dõi chuỗi ngày học ⏰</h2>
+                <p class="text-sm text-mint-700 mt-1">Duy trì thói quen ôn tập 10-15 phút mỗi ngày giúp cây tri thức luôn xanh tốt.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Card 1: Chuỗi ngày học (Study Streak) -->
+                <div class="cute-card rounded-3xl p-6 flex flex-col justify-between space-y-6 relative overflow-hidden">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-2xl bg-orange-100 border-2 border-orange-200 flex items-center justify-center text-orange-500">
+                                <i data-lucide="flame" class="w-7 h-7 fill-orange-500"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-mint-900">Chuỗi ngày học liên tục</h3>
+                                <p id="streak-status-text" class="text-xs font-semibold text-mint-600">Hoàn thành 1 bài trắc nghiệm hôm nay để giữ lửa!</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span id="big-streak-number" class="text-4xl font-extrabold text-orange-500">0</span>
+                            <span class="text-xs font-bold text-mint-700 block">ngày</span>
+                        </div>
+                    </div>
+
+                    <!-- Lịch 7 ngày gần nhất -->
+                    <div>
+                        <div class="text-xs font-extrabold uppercase tracking-wider text-mint-700 mb-3">Hoạt động 7 ngày gần đây</div>
+                        <div id="weekly-streak-grid" class="grid grid-cols-7 gap-2">
+                            <!-- Render 7 ngày bằng JS -->
+                        </div>
+                    </div>
+
+                    <div class="pt-3 border-t-2 border-mint-100 flex items-center justify-between text-xs font-semibold text-mint-700">
+                        <span>Kỷ lục cá nhân: <strong id="best-streak-number" class="text-mint-900">0 ngày</strong></span>
+                        <button onclick="switchTab('library')" class="text-mint-600 hover:underline font-extrabold">Làm bài ngay để điểm danh →</button>
+                    </div>
+                </div>
+
+                <!-- Card 2: Cài đặt khung giờ nhắc học & Web Notification -->
+                <div class="cute-card rounded-3xl p-6 space-y-5">
+                    <div class="flex items-center justify-between border-b-2 border-mint-100 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-mint-100 text-mint-600 flex items-center justify-center">
+                                <i data-lucide="bell-ring" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-mint-900">Lịch nhắc học hàng ngày</h3>
+                                <p class="text-xs font-semibold text-mint-600">Tự động gửi thông báo khi đến giờ học</p>
+                            </div>
+                        </div>
+                        <!-- Toggle Bật/Tắt nhắc nhở -->
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="reminder-enabled-toggle" class="sr-only peer" checked onchange="saveReminderSettings()">
+                            <div class="w-12 h-6 bg-mint-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-mint-500"></div>
+                        </label>
+                    </div>
+
+                    <!-- Đồng hồ đếm ngược -->
+                    <div class="p-4 rounded-2xl bg-mint-50 border-2 border-mint-200 flex items-center justify-between">
+                        <div>
+                            <div class="text-xs font-bold text-mint-700">Đếm ngược đến phiên học tiếp theo</div>
+                            <div id="main-countdown-clock" class="text-2xl font-mono font-extrabold text-mint-600 mt-0.5">00:00:00</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs font-bold text-mint-700 block">Giờ hẹn mỗi ngày</span>
+                            <input type="time" id="reminder-time-input" value="20:00" onchange="saveReminderSettings()" class="mt-1 px-3 py-1.5 rounded-xl bg-white border-2 border-mint-300 text-mint-900 font-bold text-sm focus:outline-none focus:border-mint-500">
+                        </div>
+                    </div>
+
+                    <!-- Trạng thái quyền thông báo trình duyệt -->
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between text-xs font-semibold">
+                            <span class="text-mint-700">Quyền thông báo trình duyệt:</span>
+                            <span id="notif-permission-badge" class="px-3 py-1 rounded-full bg-mint-100 text-mint-800 font-bold">Chưa kiểm tra</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <button onclick="requestNotificationPermission()" class="px-4 py-3 rounded-2xl bg-mint-500 hover:bg-mint-600 text-white text-xs font-extrabold flex items-center justify-center gap-2 transition">
+                                <i data-lucide="bell-plus" class="w-4 h-4"></i> Bật thông báo trình duyệt
+                            </button>
+                            <button onclick="sendTestNotification()" class="px-4 py-3 rounded-2xl bg-mint-100 hover:bg-mint-200 text-mint-800 border-2 border-mint-200 text-xs font-extrabold flex items-center justify-center gap-2 transition">
+                                <i data-lucide="send" class="w-4 h-4"></i> Gửi thông báo thử ngay
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-mint-600/80 leading-relaxed">
+                            * Mẹo: Hãy giữ tab này mở hoặc ghim tab trên trình duyệt để nhận thông báo kèm âm thanh nhắc nhở chính xác vào khung giờ đã hẹn.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-mint-200/80 py-5 text-center text-xs font-semibold text-mint-700/80">
+        SmartStudy Garden 🌿 • Trợ lý ôn tập cá nhân hóa với Gemini AI & Khu vườn tri thức
+    </footer>
+
+    <!-- ==================== FIREBASE & LOGIC ỨNG DỤNG ==================== -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Cấu hình PDF.js worker
+        if (window.pdfjsLib) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+
+        // Khởi tạo Firebase
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'smartstudy-garden-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        
+        let app, auth, db;
+        let currentUser = null;
+        let decksList = [];
+
+        // Danh sách loài cây có thể trồng trong vườn
+        const PLANT_SPECIES = [
+            { id: 'sprout', name: 'Cây Mầm Xanh', emoji: '🌱', maxExp: 100, color: '#22c55e', accent: '#86efac' },
+            { id: 'clover', name: 'Cỏ Bốn Lá May Mắn', emoji: '🍀', maxExp: 120, color: '#10b981', accent: '#6ee7b7' },
+            { id: 'sunflower', name: 'Hoa Hướng Dương', emoji: '🌻', maxExp: 150, color: '#eab308', accent: '#fde047' },
+            { id: 'sakura', name: 'Cây Anh Đào Hồng', emoji: '🌸', maxExp: 180, color: '#f43f5e', accent: '#fda4af' }
+        ];
+
+        // Dữ liệu hồ sơ học tập & Khu vườn
+        let userProfile = {
+            streak: 0,
+            bestStreak: 0,
+            lastStudyDate: null,
+            studyHistoryDates: [],
+            reminderTime: '20:00',
+            reminderEnabled: true,
+            // Trạng thái khu vườn & tài nguyên
+            waterDrops: 3, // Tặng sẵn 3 giọt nước khởi đầu
+            sunlight: 1,   // Tặng sẵn 1 ánh nắng khởi đầu
+            currentPlantId: 'sprout',
+            plantExp: 0,
+            harvestedPlants: [], // [{ id, name, emoji, date }]
+            // Tiến độ nhiệm vụ hàng ngày (reset theo ngày)
+            dailyQuestDate: null,
+            dailyStats: {
+                quizzesCompleted: 0,
+                correctAnswers: 0,
+                highScoreAchieved: false,
+                checkedIn: false
+            },
+            claimedQuests: [] // ['q_quiz1', 'q_correct5', 'q_score80', 'q_checkin']
+        };
+
+        // Trạng thái bài thi hiện tại
+        let selectedNumQuestions = 5;
+        let selectedDifficulty = 'Cơ bản';
+        let activeDeck = null;
+        let activeQuestions = [];
+        let userAnswers = {};
+        let isSubmitted = false;
+        let isRetryMode = false;
+        let lastNotifiedMinute = '';
+
+        // Khởi chạy xác thực và lắng nghe dữ liệu Firestore
+        async function initFirebase() {
+            ensureTodayQuestState();
+            renderGardenUI();
+            renderDailyQuestsUI();
+
+            if (!firebaseConfig) {
+                document.getElementById('user-sync-status').innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span> Chế độ cục bộ';
+                return;
+            }
+
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        currentUser = user;
+                        updateUserHeader(user);
+                        subscribeUserData(user.uid);
+                        subscribeDecks(user.uid);
+                    }
+                });
+            } catch (error) {
+                console.error("Lỗi khởi tạo Firebase:", error);
+                showToast("Không thể kết nối đồng bộ đám mây. Dữ liệu sẽ lưu tạm trong phiên.", "error");
+            }
+        }
+
+        function updateUserHeader(user) {
+            const nameEl = document.getElementById('user-display-name');
+            const avatarEl = document.getElementById('user-avatar');
+            nameEl.textContent = user.displayName || `Nhà vườn #${user.uid.slice(0, 5)}`;
+            avatarEl.src = user.photoURL || `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${user.uid}`;
+        }
+
+        // Lắng nghe thông tin Streak, Khu vườn & Nhiệm vụ hàng ngày của người dùng
+        function subscribeUserData(uid) {
+            if (!db) return;
+            const profileRef = doc(db, 'artifacts', appId, 'users', uid, 'settings', 'profile');
+            onSnapshot(profileRef, (snap) => {
+                if (snap.exists()) {
+                    userProfile = { ...userProfile, ...snap.data() };
+                    validateStreakContinuity();
+                    ensureTodayQuestState();
+                } else {
+                    ensureTodayQuestState();
+                    setDoc(profileRef, userProfile).catch(e => console.error(e));
+                }
+                syncReminderUI();
+                renderStreakUI();
+                renderGardenUI();
+                renderDailyQuestsUI();
+            }, (err) => {
+                console.error("Lỗi đọc profile:", err);
+            });
+        }
+
+        async function saveUserProfileToCloud() {
+            if (db && currentUser) {
+                const profileRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'profile');
+                await setDoc(profileRef, userProfile, { merge: true }).catch(e => console.error(e));
+            }
+        }
+
+        // Lắng nghe danh sách bộ đề đã lưu
+        function subscribeDecks(uid) {
+            if (!db) return;
+            const decksCol = collection(db, 'artifacts', appId, 'users', uid, 'decks');
+            onSnapshot(decksCol, (snapshot) => {
+                decksList = [];
+                snapshot.forEach((docSnap) => {
+                    decksList.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                decksList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                document.getElementById('deck-count-badge').textContent = decksList.length;
+                renderLibrary();
+            }, (err) => {
+                console.error("Lỗi đọc danh sách bộ đề:", err);
+            });
+        }
+
+        // ==================== LOGIC KHU VƯỜN HỌC TẬP (STUDY GARDEN) ====================
+        function getCurrentSpecies() {
+            return PLANT_SPECIES.find(p => p.id === userProfile.currentPlantId) || PLANT_SPECIES[0];
+        }
+
+        function getPlantStageInfo(exp, maxExp) {
+            const ratio = Math.min(1, exp / maxExp);
+            if (ratio >= 1) return { stage: 5, label: 'Trưởng thành rực rỡ', desc: 'Cây đã lớn tối đa! Bạn có thể thu hoạch vào nhà kính.' };
+            if (ratio >= 0.7) return { stage: 4, label: 'Đâm chồi & Ra hoa', desc: 'Những nụ hoa xinh xắn đang hé nở rực rỡ!' };
+            if (ratio >= 0.4) return { stage: 3, label: 'Cây non vươn cao', desc: 'Thân cây cứng cáp, lá xanh mướt đầy sức sống.' };
+            if (ratio >= 0.15) return { stage: 2, label: 'Nảy mầm xanh', desc: 'Hai chiếc lá non đầu tiên đã vươn lên đón nắng!' };
+            return { stage: 1, label: 'Hạt giống mới gieo', desc: 'Hạt giống đang nằm trong đất ấm, chờ giọt nước tưới!' };
+        }
+
+        window.toggleSeedSelector = function() {
+            const panel = document.getElementById('seed-selector-panel');
+            panel.classList.toggle('hidden');
+            renderSpeciesSelector();
+        };
+
+        function renderSpeciesSelector() {
+            const grid = document.getElementById('species-grid');
+            grid.innerHTML = '';
+            PLANT_SPECIES.forEach(sp => {
+                const isSelected = sp.id === userProfile.currentPlantId;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.onclick = () => selectPlantSpecies(sp.id);
+                btn.className = `p-2.5 rounded-2xl border-2 text-center transition ${
+                    isSelected
+                        ? 'bg-mint-200/80 border-mint-500 text-mint-900 font-extrabold shadow-sm'
+                        : 'bg-white border-mint-200 text-mint-800 hover:border-mint-400 font-bold'
+                }`;
+                btn.innerHTML = `
+                    <div class="text-2xl mb-1">${sp.emoji}</div>
+                    <div class="text-xs leading-tight">${sp.name}</div>
+                    <div class="text-[10px] text-mint-600 mt-0.5">${sp.maxExp} EXP</div>
+                `;
+                grid.appendChild(btn);
+            });
+        }
+
+        window.selectPlantSpecies = async function(speciesId) {
+            if (speciesId === userProfile.currentPlantId) {
+                document.getElementById('seed-selector-panel').classList.add('hidden');
+                return;
+            }
+            if ((userProfile.plantExp || 0) > 0) {
+                const ok = await showConfirm(
+                    "Đổi loài cây mới?",
+                    "Cây hiện tại đang có điểm trưởng thành. Nếu đổi hạt giống khác, tiến độ EXP của cây hiện tại sẽ bắt đầu lại từ 0. Bạn đồng ý chứ?"
+                );
+                if (!ok) return;
+            }
+            userProfile.currentPlantId = speciesId;
+            userProfile.plantExp = 0;
+            document.getElementById('seed-selector-panel').classList.add('hidden');
+            renderGardenUI();
+            await saveUserProfileToCloud();
+            showToast("Đã gieo hạt giống mới vào chậu!", "success");
+        };
+
+        function triggerGardenFloatingEffect(text, colorClass = 'text-sky-600') {
+            const container = document.getElementById('garden-floating-effects');
+            const el = document.createElement('div');
+            el.className = `float-effect font-extrabold text-lg sm:text-xl ${colorClass} drop-shadow-sm bg-white/90 px-3.5 py-1.5 rounded-full border border-mint-200`;
+            el.textContent = text;
+            container.appendChild(el);
+            setTimeout(() => el.remove(), 1150);
+        }
+
+        window.nurturePlant = async function(type) {
+            const species = getCurrentSpecies();
+            if ((userProfile.plantExp || 0) >= species.maxExp) {
+                showToast("Cây đã đạt cấp tối đa! Hãy nhấn nút Thu hoạch phía trên cây nhé.", "info");
+                return;
+            }
+
+            if (type === 'water') {
+                if ((userProfile.waterDrops || 0) <= 0) {
+                    showToast("Bạn đã hết Giọt nước 💧! Hãy làm trắc nghiệm để kiếm thêm nhé.", "error");
+                    return;
+                }
+                userProfile.waterDrops -= 1;
+                userProfile.plantExp = Math.min(species.maxExp, (userProfile.plantExp || 0) + 15);
+                playCutePopSound(660);
+                triggerGardenFloatingEffect("💧 +15 EXP Tưới mát!", "text-sky-600");
+            } else if (type === 'sun') {
+                if ((userProfile.sunlight || 0) <= 0) {
+                    showToast("Bạn đã hết Ánh nắng ☀️! Hoàn thành bài thi hoặc nhiệm vụ để nhận thêm nhé.", "error");
+                    return;
+                }
+                userProfile.sunlight -= 1;
+                userProfile.plantExp = Math.min(species.maxExp, (userProfile.plantExp || 0) + 25);
+                playCutePopSound(880);
+                triggerGardenFloatingEffect("☀️ +25 EXP Quang hợp!", "text-amber-600");
+            }
+
+            renderGardenUI();
+            await saveUserProfileToCloud();
+
+            if (userProfile.plantExp >= species.maxExp) {
+                showToast(`🎉 Chúc mừng! ${species.name} đã trưởng thành rực rỡ!`, "success");
+            }
+        };
+
+        window.harvestMaturePlant = async function() {
+            const species = getCurrentSpecies();
+            if ((userProfile.plantExp || 0) < species.maxExp) return;
+
+            const harvested = userProfile.harvestedPlants || [];
+            harvested.unshift({
+                id: species.id,
+                name: species.name,
+                emoji: species.emoji,
+                date: new Date().toLocaleDateString('vi-VN')
+            });
+
+            userProfile.harvestedPlants = harvested;
+            userProfile.plantExp = 0;
+            playCutePopSound(1046.5);
+            triggerGardenFloatingEffect(`🏆 Đã thu hoạch ${species.name}!`, "text-emerald-600");
+            showToast(`Tuyệt vời! Bạn đã đưa ${species.name} vào Nhà kính sưu tầm và bắt đầu lứa cây mới!`, "success");
+
+            renderGardenUI();
+            await saveUserProfileToCloud();
+        };
+
+        function renderGardenUI() {
+            const water = userProfile.waterDrops || 0;
+            const sun = userProfile.sunlight || 0;
+            const species = getCurrentSpecies();
+            const exp = userProfile.plantExp || 0;
+            const stageInfo = getPlantStageInfo(exp, species.maxExp);
+
+            // Cập nhật số lượng tài nguyên trên Header & Nút
+            document.getElementById('header-water-count').textContent = water;
+            document.getElementById('header-sun-count').textContent = sun;
+            document.getElementById('btn-water-badge').textContent = `${water} 💧`;
+            document.getElementById('btn-sun-badge').textContent = `${sun} ☀️`;
+
+            // Cập nhật thông tin cây
+            document.getElementById('plant-emoji-badge').textContent = species.emoji;
+            document.getElementById('current-plant-name').textContent = species.name;
+            document.getElementById('plant-stage-badge').textContent = `Giai đoạn ${stageInfo.stage}/5 • ${stageInfo.label}`;
+            document.getElementById('plant-stage-desc').textContent = stageInfo.desc;
+
+            const pct = Math.min(100, Math.round((exp / species.maxExp) * 100));
+            document.getElementById('plant-exp-text').textContent = `${exp} / ${species.maxExp} EXP (${pct}%)`;
+            document.getElementById('plant-exp-bar').style.width = `${pct}%`;
+
+            // Hiển thị nút thu hoạch nếu đạt max EXP
+            const harvestOverlay = document.getElementById('harvest-overlay');
+            if (exp >= species.maxExp) {
+                harvestOverlay.classList.remove('hidden');
+            } else {
+                harvestOverlay.classList.add('hidden');
+            }
+
+            // Vẽ SVG cây theo từng giai đoạn
+            renderPlantSVG(species, stageInfo.stage);
+
+            // Render nhà kính sưu tầm
+            const collection = userProfile.harvestedPlants || [];
+            document.getElementById('harvested-total-badge').textContent = `${collection.length} cây`;
+            const colGrid = document.getElementById('harvested-collection-grid');
+            if (collection.length === 0) {
+                colGrid.innerHTML = `<p class="text-xs text-mint-600/80 italic">Chưa có cây nào trưởng thành hoàn toàn. Hãy chăm chỉ ôn bài để thu hoạch cây đầu tiên nhé!</p>`;
+            } else {
+                colGrid.innerHTML = collection.map(item => `
+                    <div class="flex items-center gap-2 px-3 py-2 rounded-2xl bg-mint-50 border border-mint-200 text-xs font-bold text-mint-900">
+                        <span class="text-lg">${item.emoji}</span>
+                        <div>
+                            <div>${escapeHtml(item.name)}</div>
+                            <div class="text-[10px] text-mint-600 font-normal">${escapeHtml(item.date)}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function renderPlantSVG(species, stage) {
+            const group = document.getElementById('dynamic-plant-group');
+            if (!group) return;
+
+            // Tọa độ gốc cây nằm trên miệng chậu tại (250, 232)
+            let svgContent = '';
+
+            if (stage === 1) {
+                // Giai đoạn 1: Hạt giống nhú nhẹ trên mô đất
+                svgContent = `
+                    <ellipse cx="250" cy="232" rx="22" ry="6" fill="#78350f" />
+                    <path d="M 250 230 Q 250 220 255 218" stroke="#22c55e" stroke-width="3.5" fill="none" stroke-linecap="round" />
+                    <ellipse cx="257" cy="217" rx="5" ry="3" fill="#4ade80" transform="rotate(-20 257 217)" />
+                `;
+            } else if (stage === 2) {
+                // Giai đoạn 2: Nảy mầm 2 lá non
+                svgContent = `
+                    <ellipse cx="250" cy="232" rx="24" ry="6" fill="#78350f" />
+                    <path d="M 250 232 Q 248 210 250 192" stroke="#16a34a" stroke-width="4.5" fill="none" stroke-linecap="round" />
+                    <ellipse cx="238" cy="196" rx="12" ry="6" fill="#4ade80" transform="rotate(-25 238 196)" />
+                    <ellipse cx="262" cy="196" rx="12" ry="6" fill="#22c55e" transform="rotate(25 262 196)" />
+                `;
+            } else if (stage === 3) {
+                // Giai đoạn 3: Cây non nhiều lá xanh mướt
+                svgContent = `
+                    <ellipse cx="250" cy="232" rx="26" ry="7" fill="#78350f" />
+                    <path d="M 250 232 Q 246 190 250 150" stroke="#15803d" stroke-width="6" fill="none" stroke-linecap="round" />
+                    <ellipse cx="233" cy="202" rx="16" ry="8" fill="#22c55e" transform="rotate(-30 233 202)" />
+                    <ellipse cx="267" cy="195" rx="16" ry="8" fill="#4ade80" transform="rotate(30 267 195)" />
+                    <ellipse cx="232" cy="172" rx="15" ry="7.5" fill="#4ade80" transform="rotate(-20 232 172)" />
+                    <ellipse cx="268" cy="168" rx="15" ry="7.5" fill="#22c55e" transform="rotate(20 268 168)" />
+                    <ellipse cx="250" cy="144" rx="11" ry="15" fill="#86efac" />
+                `;
+            } else {
+                // Giai đoạn 4 & 5: Cây phát triển tán rộng + Hoa / Nụ đặc trưng từng loài
+                const isFull = stage === 5;
+                const scale = isFull ? 1.12 : 0.96;
+
+                let crownAndFlowers = '';
+                if (species.id === 'sunflower') {
+                    crownAndFlowers = `
+                        <path d="M 250 232 Q 245 170 250 115" stroke="#15803d" stroke-width="7.5" fill="none" stroke-linecap="round" />
+                        <ellipse cx="228" cy="185" rx="20" ry="10" fill="#22c55e" transform="rotate(-28 228 185)" />
+                        <ellipse cx="272" cy="175" rx="20" ry="10" fill="#4ade80" transform="rotate(28 272 175)" />
+                        <g transform="translate(250, 110)">
+                            <circle cx="0" cy="0" r="${isFull ? 32 : 24}" fill="#facc15" />
+                            <circle cx="0" cy="0" r="${isFull ? 28 : 20}" fill="#fde047" />
+                            <circle cx="0" cy="0" r="${isFull ? 16 : 12}" fill="#78350f" />
+                            <circle cx="-5" cy="-2" r="2" fill="#fef08a" />
+                            <circle cx="5" cy="-2" r="2" fill="#fef08a" />
+                            <path d="M -4 4 Q 0 8 4 4" stroke="#fef08a" stroke-width="1.8" fill="none" stroke-linecap="round" />
+                        </g>
+                    `;
+                } else if (species.id === 'sakura') {
+                    crownAndFlowers = `
+                        <path d="M 250 232 L 250 155 M 250 185 L 222 162 M 250 175 L 278 155" stroke="#78350f" stroke-width="8" fill="none" stroke-linecap="round" />
+                        <circle cx="250" cy="128" r="${isFull ? 44 : 35}" fill="#fda4af" />
+                        <circle cx="215" cy="148" r="${isFull ? 32 : 25}" fill="#fecdd3" />
+                        <circle cx="285" cy="148" r="${isFull ? 32 : 25}" fill="#fb7185" />
+                        <circle cx="250" cy="105" r="${isFull ? 28 : 22}" fill="#ffe4e6" />
+                        ${isFull ? '<circle cx="230" cy="125" r="4" fill="#ffffff"/><circle cx="270" cy="130" r="4" fill="#ffffff"/><circle cx="250" cy="145" r="4" fill="#ffffff"/>' : ''}
+                    `;
+                } else if (species.id === 'clover') {
+                    crownAndFlowers = `
+                        <path d="M 250 232 Q 248 175 250 130" stroke="#059669" stroke-width="6.5" fill="none" stroke-linecap="round" />
+                        <g transform="translate(250, 125)">
+                            <circle cx="-18" cy="-16" r="${isFull ? 20 : 15}" fill="#10b981" />
+                            <circle cx="18" cy="-16" r="${isFull ? 20 : 15}" fill="#34d399" />
+                            <circle cx="-18" cy="16" r="${isFull ? 20 : 15}" fill="#34d399" />
+                            <circle cx="18" cy="16" r="${isFull ? 20 : 15}" fill="#10b981" />
+                            <circle cx="0" cy="0" r="8" fill="#a7f3d0" />
+                        </g>
+                    `;
+                } else {
+                    // Cây Mầm Xanh trưởng thành tán tròn nhiều hoa nhỏ
+                    crownAndFlowers = `
+                        <path d="M 250 232 L 250 155 M 250 185 L 225 165 M 250 175 L 275 160" stroke="#78350f" stroke-width="8" fill="none" stroke-linecap="round" />
+                        <circle cx="250" cy="128" r="${isFull ? 44 : 35}" fill="#22c55e" />
+                        <circle cx="216" cy="148" r="${isFull ? 30 : 24}" fill="#4ade80" />
+                        <circle cx="284" cy="148" r="${isFull ? 30 : 24}" fill="#16a34a" />
+                        <circle cx="250" cy="104" r="${isFull ? 28 : 22}" fill="#86efac" />
+                        ${isFull ? `
+                            <circle cx="228" cy="130" r="5" fill="#fef08a" />
+                            <circle cx="272" cy="135" r="5" fill="#fbcfe8" />
+                            <circle cx="250" cy="112" r="5" fill="#ffffff" />
+                        ` : ''}
+                    `;
+                }
+
+                // Thêm hạt lấp lánh nếu cây đạt cấp 5
+                const sparkles = isFull ? `
+                    <g fill="#facc15" class="sparkle-anim">
+                        <circle cx="195" cy="105" r="3.5" />
+                        <circle cx="305" cy="110" r="3.5" />
+                        <circle cx="250" cy="70" r="4" />
+                    </g>
+                ` : '';
+
+                svgContent = `<g transform="translate(250, 232) scale(${scale}) translate(-250, -232)">${crownAndFlowers}${sparkles}</g>`;
+            }
+
+            group.innerHTML = svgContent;
+        }
+
+        // ==================== LOGIC NHIỆM VỤ HÀNG NGÀY (DAILY QUESTS) ====================
+        function ensureTodayQuestState() {
+            const today = getTodayDateString();
+            if (userProfile.dailyQuestDate !== today) {
+                userProfile.dailyQuestDate = today;
+                userProfile.dailyStats = {
+                    quizzesCompleted: 0,
+                    correctAnswers: 0,
+                    highScoreAchieved: false,
+                    checkedIn: true // Tự động điểm danh khi mở app ngày mới
+                };
+                userProfile.claimedQuests = [];
+            } else if (!userProfile.dailyStats) {
+                userProfile.dailyStats = {
+                    quizzesCompleted: 0,
+                    correctAnswers: 0,
+                    highScoreAchieved: false,
+                    checkedIn: true
+                };
+            }
+        }
+
+        function getDailyQuestsDefinitions() {
+            const stats = userProfile.dailyStats || {};
+            return [
+                {
+                    id: 'q_checkin',
+                    title: 'Ghé thăm khu vườn hôm nay',
+                    desc: 'Mở ứng dụng và bắt đầu ngày học mới',
+                    icon: 'calendar-heart',
+                    current: stats.checkedIn ? 1 : 1,
+                    target: 1,
+                    rewardWater: 2,
+                    rewardSun: 0,
+                    rewardLabel: '+2 💧'
+                },
+                {
+                    id: 'q_quiz1',
+                    title: 'Hoàn thành 1 bài trắc nghiệm',
+                    desc: 'Nộp hoàn chỉnh 1 đề ôn tập bất kỳ trong ngày',
+                    icon: 'check-square',
+                    current: Math.min(1, stats.quizzesCompleted || 0),
+                    target: 1,
+                    rewardWater: 2,
+                    rewardSun: 1,
+                    rewardLabel: '+2 💧 +1 ☀️'
+                },
+                {
+                    id: 'q_correct5',
+                    title: 'Trả lời đúng ít nhất 5 câu hỏi',
+                    desc: 'Tích lũy 5 câu trả lời chính xác hôm nay',
+                    icon: 'sparkles',
+                    current: Math.min(5, stats.correctAnswers || 0),
+                    target: 5,
+                    rewardWater: 3,
+                    rewardSun: 1,
+                    rewardLabel: '+3 💧 +1 ☀️'
+                },
+                {
+                    id: 'q_score80',
+                    title: 'Đạt điểm từ 80% trở lên',
+                    desc: 'Hoàn thành một bài kiểm tra đạt từ 8.0 điểm',
+                    icon: 'trophy',
+                    current: stats.highScoreAchieved ? 1 : 0,
+                    target: 1,
+                    rewardWater: 2,
+                    rewardSun: 2,
+                    rewardLabel: '+2 💧 +2 ☀️'
+                }
+            ];
+        }
+
+        function renderDailyQuestsUI() {
+            ensureTodayQuestState();
+            const listEl = document.getElementById('daily-quests-list');
+            const quests = getDailyQuestsDefinitions();
+            const claimed = new Set(userProfile.claimedQuests || []);
+
+            let completedOrClaimedCount = 0;
+            let hasUnclaimedReady = false;
+            listEl.innerHTML = '';
+
+            quests.forEach(q => {
+                const isDone = q.current >= q.target;
+                const isClaimed = claimed.has(q.id);
+                if (isDone) completedOrClaimedCount++;
+                if (isDone && !isClaimed) hasUnclaimedReady = true;
+
+                const pct = Math.min(100, Math.round((q.current / q.target) * 100));
+
+                let actionBtn = '';
+                if (isClaimed) {
+                    actionBtn = `<span class="px-3 py-1.5 rounded-xl bg-mint-100 text-mint-700 text-xs font-bold flex items-center gap-1"><i data-lucide="check" class="w-3.5 h-3.5"></i> Đã nhận</span>`;
+                } else if (isDone) {
+                    actionBtn = `<button onclick="claimDailyQuest('${q.id}')" class="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-amber-950 text-xs font-extrabold shadow-sm animate-pulse transition">Nhận ${q.rewardLabel}</button>`;
+                } else {
+                    actionBtn = `<span class="px-3 py-1.5 rounded-xl bg-mint-50 border border-mint-200 text-mint-700 text-xs font-bold">${q.rewardLabel}</span>`;
+                }
+
+                const card = document.createElement('div');
+                card.className = `p-3.5 rounded-2xl border-2 transition ${
+                    isClaimed
+                        ? 'bg-mint-50/50 border-mint-100 opacity-75'
+                        : isDone
+                            ? 'bg-amber-50/70 border-amber-300'
+                            : 'bg-white border-mint-100'
+                }`;
+                card.innerHTML = `
+                    <div class="flex items-start justify-between gap-2.5">
+                        <div class="flex items-start gap-2.5">
+                            <div class="w-9 h-9 rounded-xl ${isDone ? 'bg-mint-500 text-white' : 'bg-mint-100 text-mint-600'} flex items-center justify-center shrink-0 mt-0.5">
+                                <i data-lucide="${q.icon}" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <div class="text-sm font-extrabold text-mint-900">${q.title}</div>
+                                <div class="text-xs text-mint-600">${q.desc}</div>
+                            </div>
+                        </div>
+                        <div class="shrink-0">${actionBtn}</div>
+                    </div>
+                    <div class="mt-2.5 flex items-center gap-2.5">
+                        <div class="flex-1 h-2 bg-mint-100 rounded-full overflow-hidden">
+                            <div class="h-full bg-mint-500 rounded-full transition-all" style="width: ${pct}%"></div>
+                        </div>
+                        <span class="text-[11px] font-extrabold text-mint-700">${q.current}/${q.target}</span>
+                    </div>
+                `;
+                listEl.appendChild(card);
+            });
+
+            document.getElementById('quest-completion-pill').textContent = `${completedOrClaimedCount}/${quests.length}`;
+            const readyDot = document.getElementById('quest-ready-dot');
+            if (hasUnclaimedReady) {
+                readyDot.classList.remove('hidden');
+            } else {
+                readyDot.classList.add('hidden');
+            }
+            lucide.createIcons();
+        }
+
+        window.claimDailyQuest = async function(questId) {
+            ensureTodayQuestState();
+            const quests = getDailyQuestsDefinitions();
+            const quest = quests.find(q => q.id === questId);
+            if (!quest || quest.current < quest.target) return;
+            if ((userProfile.claimedQuests || []).includes(questId)) return;
+
+            userProfile.claimedQuests = [...(userProfile.claimedQuests || []), questId];
+            userProfile.waterDrops = (userProfile.waterDrops || 0) + quest.rewardWater;
+            userProfile.sunlight = (userProfile.sunlight || 0) + quest.rewardSun;
+
+            playCutePopSound(784);
+            triggerGardenFloatingEffect(`🎁 Nhận thưởng ${quest.rewardLabel}!`, "text-emerald-600");
+            showToast(`Chúc mừng! Bạn nhận được ${quest.rewardLabel} từ nhiệm vụ "${quest.title}"!`, "success");
+
+            renderGardenUI();
+            renderDailyQuestsUI();
+            await saveUserProfileToCloud();
+        };
+
+        // ==================== XỬ LÝ TẢI FILE (PDF, DOCX, TXT, MD) ====================
+        const fileInput = document.getElementById('file-upload-input');
+        const dropZone = document.getElementById('drop-zone');
+        const contentTextarea = document.getElementById('lesson-content-input');
+        const titleInput = document.getElementById('quiz-title-input');
+
+        contentTextarea.addEventListener('input', () => {
+            document.getElementById('char-count').textContent = `${contentTextarea.value.length.toLocaleString('vi-VN')} ký tự`;
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-mint-500', 'bg-mint-100');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-mint-500', 'bg-mint-100');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-mint-500', 'bg-mint-100');
+            if (e.dataTransfer.files.length > 0) {
+                handleFileUpload(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+
+        async function handleFileUpload(file) {
+            const badge = document.getElementById('file-status-badge');
+            badge.classList.remove('hidden');
+            badge.textContent = `Đang đọc file: ${file.name}...`;
+
+            const ext = file.name.split('.').pop().toLowerCase();
+            try {
+                let extractedText = '';
+
+                if (ext === 'txt' || ext === 'md') {
+                    extractedText = await file.text();
+                } else if (ext === 'pdf') {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    let fullText = [];
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        fullText.push(pageText);
+                    }
+                    extractedText = fullText.join('\n\n');
+                } else if (ext === 'docx') {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const result = await window.mammoth.extractRawText({ arrayBuffer });
+                    extractedText = result.value;
+                } else {
+                    showToast("Định dạng file chưa được hỗ trợ. Vui lòng dùng .txt, .md, .pdf hoặc .docx", "error");
+                    badge.classList.add('hidden');
+                    return;
+                }
+
+                if (!extractedText.trim()) {
+                    showToast("Không trích xuất được chữ từ file (có thể là file PDF dạng ảnh scan).", "error");
+                    badge.textContent = `File trống: ${file.name}`;
+                    return;
+                }
+
+                contentTextarea.value = extractedText.trim();
+                contentTextarea.dispatchEvent(new Event('input'));
+
+                if (!titleInput.value.trim()) {
+                    titleInput.value = file.name.replace(/\.[^/.]+$/, "");
+                }
+
+                badge.textContent = `Đã tải: ${file.name}`;
+                showToast(`Đã trích xuất thành công nội dung từ "${file.name}"!`, "success");
+            } catch (err) {
+                console.error("Lỗi đọc file:", err);
+                badge.textContent = `Lỗi đọc file`;
+                showToast("Có lỗi xảy ra khi đọc file tài liệu.", "error");
+            }
+        }
+
+        // ==================== CẤU HÌNH SỐ CÂU & MỨC ĐỘ ====================
+        document.querySelectorAll('.q-count-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.q-count-btn').forEach(b => {
+                    b.className = 'q-count-btn py-2.5 rounded-2xl text-sm font-bold border-2 border-mint-200 bg-white text-mint-600 hover:border-mint-400 transition';
+                });
+                btn.className = 'q-count-btn py-2.5 rounded-2xl text-sm font-extrabold border-2 border-mint-500 bg-mint-100 text-mint-800 transition';
+                selectedNumQuestions = parseInt(btn.dataset.val, 10);
+            });
+        });
+
+        document.querySelectorAll('.diff-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.diff-btn').forEach(b => {
+                    b.className = 'diff-btn w-full flex items-center justify-between p-3.5 rounded-2xl border-2 border-mint-200 bg-white text-left hover:border-mint-400 transition';
+                    const icon = b.querySelector('.diff-icon');
+                    icon.setAttribute('data-lucide', 'circle');
+                    icon.classList.remove('text-mint-600');
+                    icon.classList.add('text-mint-300');
+                });
+                btn.className = 'diff-btn w-full flex items-center justify-between p-3.5 rounded-2xl border-2 border-mint-500 bg-mint-100/80 text-left transition';
+                const activeIcon = btn.querySelector('.diff-icon');
+                activeIcon.setAttribute('data-lucide', 'check-circle-2');
+                activeIcon.classList.remove('text-mint-300');
+                activeIcon.classList.add('text-mint-600');
+                selectedDifficulty = btn.dataset.val;
+                lucide.createIcons();
+            });
+        });
+
+        window.fillSampleContent = function() {
+            titleInput.value = "Quá trình Quang hợp ở Thực vật xanh";
+            contentTextarea.value = `Quang hợp là quá trình sinh lý quan trọng nhất ở thực vật xanh, tảo và một số vi khuẩn, trong đó năng lượng ánh sáng mặt trời được diệp lục hấp thụ để tổng hợp chất hữu cơ (chủ yếu là đường glucôzơ) từ khí cacbonic (CO2) và nước (H2O), đồng thời giải phóng khí ôxi (O2) ra môi trường.
+
+Quá trình quang hợp diễn ra chủ yếu ở bào quan lục lạp trong tế bào lá cây và gồm 2 pha chính:
+1. Pha sáng: Diễn ra tại màng tilacôit của lục lạp, cần có ánh sáng. Năng lượng ánh sáng được chuyển hóa thành năng lượng hóa học tích lũy trong ATP và NADPH, đồng thời phân ly nước để giải phóng khí O2.
+2. Pha tối (Chu trình Calvin): Diễn ra trong chất nền (stroma) của lục lạp, không cần ánh sáng trực tiếp nhưng sử dụng ATP và NADPH từ pha sáng để cố định CO2 thành hợp chất hữu cơ (glucôzơ).
+
+Ý nghĩa của quang hợp: Cung cấp nguồn thức ăn và năng lượng cho hầu hết sinh vật trên Trái Đất, hấp thụ khí CO2 giúp điều hòa không khí và cung cấp khí O2 duy trì sự sống.`;
+            contentTextarea.dispatchEvent(new Event('input'));
+            showToast("Đã điền bài học mẫu về Quang hợp!", "info");
+        };
+
+        window.clearContent = function() {
+            contentTextarea.value = '';
+            titleInput.value = '';
+            document.getElementById('file-status-badge').classList.add('hidden');
+            contentTextarea.dispatchEvent(new Event('input'));
+        };
+
+        // ==================== GỌI GEMINI API TẠO TRẮC NGHIỆM ====================
+        async function fetchWithBackoff(url, options, maxRetries = 4) {
+            let delay = 1000;
+            for (let i = 0; i < maxRetries; i++) {
+                const response = await fetch(url, options);
+                if (response.ok) return response;
+                if (response.status === 429 || response.status >= 500) {
+                    await new Promise(res => setTimeout(res, delay));
+                    delay *= 2;
+                } else {
+                    const errText = await response.text();
+                    throw new Error(`API Error ${response.status}: ${errText}`);
+                }
+            }
+            throw new Error("Hệ thống AI đang quá tải, vui lòng thử lại sau ít phút.");
+        }
+
+        window.generateQuizWithAI = async function() {
+            const rawText = contentTextarea.value.trim();
+            if (rawText.length < 50) {
+                showToast("Vui lòng nhập hoặc tải lên nội dung bài học dài hơn (tối thiểu 50 ký tự).", "error");
+                return;
+            }
+
+            const btn = document.getElementById('generate-quiz-btn');
+            const loadingBox = document.getElementById('ai-loading-box');
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            loadingBox.classList.remove('hidden');
+
+            const truncatedText = rawText.slice(0, 25000);
+            const deckTitle = titleInput.value.trim() || `Bài ôn tập ngày ${new Date().toLocaleDateString('vi-VN')}`;
+
+            const prompt = `Bạn là một giáo viên tận tâm và dễ thương. Dựa vào nội dung bài học dưới đây, hãy tạo đúng ${selectedNumQuestions} câu hỏi trắc nghiệm khách quan bằng tiếng Việt ở mức độ "${selectedDifficulty}".
+
+Yêu cầu bắt buộc:
+- Mỗi câu hỏi có đúng 4 phương án trả lời (tương ứng A, B, C, D - không cần ghi chữ A., B. ở đầu mỗi phương án vì giao diện sẽ tự đánh nhãn).
+- Chỉ có 1 đáp án đúng duy nhất (correctIndex từ 0 đến 3).
+- Phần giải thích (explanation) phải rõ ràng, súc tích: nêu rõ tại sao đáp án đúng là chính xác dựa trên bài học.
+- Câu hỏi phải bám sát nội dung tài liệu cung cấp, không bịa đặt thông tin ngoài lề.
+
+Nội dung bài học:
+"""
+${truncatedText}
+"""`;
+
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            suggestedTitle: { type: "STRING" },
+                            questions: {
+                                type: "ARRAY",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        question: { type: "STRING" },
+                                        options: {
+                                            type: "ARRAY",
+                                            items: { type: "STRING" }
+                                        },
+                                        correctIndex: { type: "INTEGER" },
+                                        explanation: { type: "STRING" }
+                                    },
+                                    required: ["question", "options", "correctIndex", "explanation"]
+                                }
+                            }
+                        },
+                        required: ["suggestedTitle", "questions"]
+                    }
+                }
+            };
+
+            try {
+                const response = await fetchWithBackoff(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                const jsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!jsonText) throw new Error("Không nhận được dữ liệu câu hỏi từ AI.");
+
+                const parsed = JSON.parse(jsonText);
+                const validQuestions = (parsed.questions || []).filter(q =>
+                    q.question && Array.isArray(q.options) && q.options.length === 4 &&
+                    typeof q.correctIndex === 'number' && q.correctIndex >= 0 && q.correctIndex <= 3
+                );
+
+                if (validQuestions.length === 0) {
+                    throw new Error("Dữ liệu câu hỏi trả về không hợp lệ.");
+                }
+
+                const finalTitle = titleInput.value.trim() || parsed.suggestedTitle || deckTitle;
+                const newDeck = {
+                    title: finalTitle,
+                    difficulty: selectedDifficulty,
+                    questions: validQuestions,
+                    createdAt: Date.now(),
+                    bestScore: null,
+                    attempts: 0
+                };
+
+                if (db && currentUser) {
+                    const docRef = await addDoc(collection(db, 'artifacts', appId, 'users', currentUser.uid, 'decks'), newDeck);
+                    newDeck.id = docRef.id;
+                } else {
+                    newDeck.id = 'local_' + Date.now();
+                    decksList.unshift(newDeck);
+                    renderLibrary();
+                }
+
+                showToast(`Đã tạo thành công ${validQuestions.length} câu hỏi trắc nghiệm!`, "success");
+                openQuizSession(newDeck);
+            } catch (error) {
+                console.error("Lỗi tạo đề AI:", error);
+                showToast(error.message || "Có lỗi khi tạo đề bằng AI. Vui lòng thử lại.", "error");
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                loadingBox.classList.add('hidden');
+            }
+        };
+
+        // ==================== GIAO DIỆN LÀM BÀI & CHẤM ĐIỂM ====================
+        window.openQuizSession = function(deck, customQuestions = null, retryMode = false) {
+            activeDeck = deck;
+            activeQuestions = customQuestions || deck.questions;
+            userAnswers = {};
+            isSubmitted = false;
+            isRetryMode = retryMode;
+
+            document.getElementById('active-quiz-title').textContent = retryMode
+                ? `${deck.title} (Ôn tập câu sai)`
+                : deck.title;
+            document.getElementById('active-quiz-badge').textContent = deck.difficulty || 'Cơ bản';
+            document.getElementById('quiz-result-banner').classList.add('hidden');
+            document.getElementById('submit-quiz-btn').classList.remove('hidden');
+            document.getElementById('retry-wrong-btn').classList.add('hidden');
+            document.getElementById('retake-all-btn').classList.add('hidden');
+
+            updateQuizProgressMeta();
+            renderQuestions();
+            switchTab('quiz');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        function updateQuizProgressMeta() {
+            const answeredCount = Object.keys(userAnswers).length;
+            const total = activeQuestions.length;
+            document.getElementById('active-quiz-meta').textContent = isSubmitted
+                ? `Đã hoàn thành ${total} câu hỏi`
+                : `Đã chọn ${answeredCount} / ${total} câu hỏi`;
+        }
+
+        function renderQuestions() {
+            const container = document.getElementById('questions-container');
+            container.innerHTML = '';
+            const optionLetters = ['A', 'B', 'C', 'D'];
+
+            activeQuestions.forEach((q, qIdx) => {
+                const userChoice = userAnswers[qIdx];
+                const isCorrect = isSubmitted && userChoice === q.correctIndex;
+
+                let cardBorderClass = 'border-mint-200';
+                if (isSubmitted) {
+                    cardBorderClass = isCorrect ? 'border-emerald-400 bg-emerald-50/30' : 'border-rose-300 bg-rose-50/20';
+                }
+
+                const card = document.createElement('div');
+                card.className = `cute-card rounded-3xl p-5 sm:p-6 border-2 ${cardBorderClass} transition`;
+
+                let statusTag = '';
+                if (isSubmitted) {
+                    statusTag = isCorrect
+                        ? `<span class="px-3 py-1 rounded-xl bg-emerald-100 text-emerald-700 text-xs font-extrabold flex items-center gap-1 shrink-0"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> +1 💧</span>`
+                        : `<span class="px-3 py-1 rounded-xl bg-rose-100 text-rose-700 text-xs font-extrabold flex items-center gap-1 shrink-0"><i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Chưa đúng</span>`;
+                }
+
+                let optionsHtml = '';
+                q.options.forEach((optText, optIdx) => {
+                    let btnStyle = 'bg-mint-50/60 border-mint-200 text-mint-900 hover:border-mint-400 hover:bg-mint-100/70';
+                    let letterStyle = 'bg-white text-mint-700 border-mint-200';
+
+                    if (!isSubmitted) {
+                        if (userChoice === optIdx) {
+                            btnStyle = 'bg-mint-200/80 border-mint-500 text-mint-950 font-bold shadow-sm';
+                            letterStyle = 'bg-mint-500 text-white border-mint-500';
+                        }
+                    } else {
+                        if (optIdx === q.correctIndex) {
+                            btnStyle = 'bg-emerald-100/90 border-emerald-500 text-emerald-950 font-bold';
+                            letterStyle = 'bg-emerald-500 text-white border-emerald-500';
+                        } else if (userChoice === optIdx && optIdx !== q.correctIndex) {
+                            btnStyle = 'bg-rose-100/80 border-rose-400 text-rose-950';
+                            letterStyle = 'bg-rose-500 text-white border-rose-500';
+                        } else {
+                            btnStyle = 'bg-white/60 border-mint-100 text-mint-700/60';
+                        }
+                    }
+
+                    optionsHtml += `
+                        <button type="button" onclick="selectOption(${qIdx}, ${optIdx})" ${isSubmitted ? 'disabled' : ''}
+                            class="w-full text-left p-3.5 rounded-2xl border-2 ${btnStyle} flex items-start gap-3.5 transition ${isSubmitted ? 'cursor-default' : 'cursor-pointer'}">
+                            <span class="w-7 h-7 rounded-xl border-2 ${letterStyle} flex items-center justify-center text-xs font-extrabold shrink-0 mt-0.5">
+                                ${optionLetters[optIdx]}
+                            </span>
+                            <span class="text-sm leading-relaxed pt-0.5">${escapeHtml(optText)}</span>
+                        </button>
+                    `;
+                });
+
+                let explanationHtml = '';
+                if (isSubmitted) {
+                    explanationHtml = `
+                        <div class="mt-4 p-4 rounded-2xl bg-mint-50 border-2 border-mint-200 space-y-1.5">
+                            <div class="flex items-center gap-1.5 text-xs font-extrabold text-mint-700 uppercase tracking-wider">
+                                <i data-lucide="lightbulb" class="w-4 h-4 text-amber-500"></i> Giải thích chi tiết (Đáp án đúng: ${optionLetters[q.correctIndex]})
+                            </div>
+                            <p class="text-sm text-mint-900 leading-relaxed">${escapeHtml(q.explanation || 'Đáp án này được trích xuất trực tiếp từ nội dung bài học.')}</p>
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div class="flex items-start justify-between gap-3 mb-4">
+                        <div class="flex items-start gap-3">
+                            <span class="px-3 py-1 rounded-xl bg-mint-100 text-mint-800 text-xs font-extrabold shrink-0">Câu ${qIdx + 1}</span>
+                            <h4 class="text-base font-bold text-mint-950 leading-snug">${escapeHtml(q.question)}</h4>
+                        </div>
+                        ${statusTag}
+                    </div>
+                    <div class="grid grid-cols-1 gap-2.5">
+                        ${optionsHtml}
+                    </div>
+                    ${explanationHtml}
+                `;
+
+                container.appendChild(card);
+            });
+
+            lucide.createIcons();
+        }
+
+        window.selectOption = function(qIdx, optIdx) {
+            if (isSubmitted) return;
+            userAnswers[qIdx] = optIdx;
+            updateQuizProgressMeta();
+            renderQuestions();
+        };
+
+        window.submitQuiz = async function() {
+            const total = activeQuestions.length;
+            const answered = Object.keys(userAnswers).length;
+
+            if (answered < total) {
+                const confirmed = await showConfirm(
+                    "Chưa trả lời hết câu hỏi",
+                    `Bạn mới chọn ${answered}/${total} câu. Những câu chưa chọn sẽ bị tính là sai. Bạn vẫn muốn nộp bài chứ?`
+                );
+                if (!confirmed) return;
+            }
+
+            isSubmitted = true;
+            let correctCount = 0;
+            const wrongQuestions = [];
+
+            activeQuestions.forEach((q, idx) => {
+                if (userAnswers[idx] === q.correctIndex) {
+                    correctCount++;
+                } else {
+                    wrongQuestions.push(q);
+                }
+            });
+
+            const score10 = ((correctCount / total) * 10).toFixed(1);
+            const accuracyRatio = correctCount / total;
+
+            // Tính phần thưởng cho khu vườn
+            const earnedWater = correctCount; // Mỗi câu đúng = +1 Giọt nước
+            const earnedSun = isRetryMode ? 0 : 1; // Hoàn thành 1 đề mới = +1 Ánh nắng
+
+            userProfile.waterDrops = (userProfile.waterDrops || 0) + earnedWater;
+            userProfile.sunlight = (userProfile.sunlight || 0) + earnedSun;
+
+            // Cập nhật tiến độ Nhiệm vụ hàng ngày
+            ensureTodayQuestState();
+            userProfile.dailyStats.correctAnswers = (userProfile.dailyStats.correctAnswers || 0) + correctCount;
+            if (!isRetryMode) {
+                userProfile.dailyStats.quizzesCompleted = (userProfile.dailyStats.quizzesCompleted || 0) + 1;
+                if (accuracyRatio >= 0.8) {
+                    userProfile.dailyStats.highScoreAchieved = true;
+                }
+            }
+
+            // Cập nhật UI kết quả
+            document.getElementById('submit-quiz-btn').classList.add('hidden');
+            document.getElementById('retake-all-btn').classList.remove('hidden');
+
+            const banner = document.getElementById('quiz-result-banner');
+            banner.classList.remove('hidden');
+            document.getElementById('result-score-text').textContent = score10;
+            document.getElementById('reward-water-earned').textContent = earnedWater;
+            document.getElementById('reward-sun-earned').textContent = earnedSun;
+
+            let headline = "Cố gắng thêm một chút nhé! 🌱";
+            if (score10 >= 8.5) headline = "Xuất sắc! Cây tri thức của bạn sắp nở hoa rồi! 🌸";
+            else if (score10 >= 6.5) headline = "Khá tốt! Cùng xem lại phần giải thích bên dưới nhé.";
+            document.getElementById('result-headline').textContent = headline;
+            document.getElementById('result-subtext').textContent = `Bạn trả lời đúng ${correctCount}/${total} câu hỏi và nhận được quà chăm sóc khu vườn!`;
+
+            if (wrongQuestions.length > 0) {
+                window._currentWrongQuestions = wrongQuestions;
+                document.getElementById('wrong-count-label').textContent = wrongQuestions.length;
+                document.getElementById('retry-wrong-btn').classList.remove('hidden');
+                document.getElementById('banner-retry-wrong-btn').classList.remove('hidden');
+            } else {
+                document.getElementById('retry-wrong-btn').classList.add('hidden');
+                document.getElementById('banner-retry-wrong-btn').classList.add('hidden');
+            }
+
+            updateQuizProgressMeta();
+            renderQuestions();
+            renderGardenUI();
+            renderDailyQuestsUI();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // Cập nhật điểm số bộ đề vào Firestore
+            if (!isRetryMode && activeDeck) {
+                const numericScore = parseFloat(score10);
+                const newBest = activeDeck.bestScore === null ? numericScore : Math.max(activeDeck.bestScore, numericScore);
+                const newAttempts = (activeDeck.attempts || 0) + 1;
+
+                activeDeck.bestScore = newBest;
+                activeDeck.attempts = newAttempts;
+
+                if (db && currentUser && !activeDeck.id.startsWith('local_')) {
+                    const deckRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'decks', activeDeck.id);
+                    updateDoc(deckRef, { bestScore: newBest, attempts: newAttempts }).catch(e => console.error(e));
+                } else {
+                    renderLibrary();
+                }
+            }
+
+            await recordDailyStudyStreak();
+            await saveUserProfileToCloud();
+        };
+
+        window.startRetryWrongQuestions = function() {
+            if (!window._currentWrongQuestions || window._currentWrongQuestions.length === 0) return;
+            openQuizSession(activeDeck, window._currentWrongQuestions, true);
+            showToast(`Bắt đầu ôn tập lại ${window._currentWrongQuestions.length} câu bạn đã làm sai!`, "info");
+        };
+
+        window.resetCurrentQuiz = function() {
+            if (!activeDeck) return;
+            openQuizSession(activeDeck, activeDeck.questions, false);
+        };
+
+        // ==================== QUẢN LÝ KHO BỘ ĐỀ ====================
+        window.renderLibrary = function() {
+            const grid = document.getElementById('decks-grid');
+            const emptyState = document.getElementById('empty-library-state');
+            const keyword = document.getElementById('search-deck-input').value.trim().toLowerCase();
+
+            document.getElementById('stat-total-decks').textContent = decksList.length;
+            const totalAttempts = decksList.reduce((acc, d) => acc + (d.attempts || 0), 0);
+            document.getElementById('stat-total-attempts').textContent = totalAttempts;
+
+            const scoredDecks = decksList.filter(d => d.bestScore !== null && d.bestScore !== undefined);
+            if (scoredDecks.length > 0) {
+                const avg = scoredDecks.reduce((acc, d) => acc + d.bestScore, 0) / scoredDecks.length;
+                document.getElementById('stat-avg-score').textContent = `${avg.toFixed(1)}đ`;
+            } else {
+                document.getElementById('stat-avg-score').textContent = '--';
+            }
+
+            const filtered = decksList.filter(d => d.title.toLowerCase().includes(keyword));
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            grid.innerHTML = '';
+
+            filtered.forEach(deck => {
+                const dateStr = deck.createdAt ? new Date(deck.createdAt).toLocaleDateString('vi-VN') : 'Hôm nay';
+                const qCount = deck.questions ? deck.questions.length : 0;
+                const scoreBadge = deck.bestScore !== null && deck.bestScore !== undefined
+                    ? `<span class="px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-extrabold">Cao nhất: ${deck.bestScore}đ</span>`
+                    : `<span class="px-2.5 py-1 rounded-xl bg-mint-50 text-mint-600 text-xs font-bold">Chưa làm bài</span>`;
+
+                const card = document.createElement('div');
+                card.className = 'cute-card rounded-3xl p-5 flex flex-col justify-between hover:border-mint-400 transition group';
+                card.innerHTML = `
+                    <div class="space-y-3">
+                        <div class="flex items-start justify-between gap-2">
+                            <span class="px-3 py-1 rounded-xl bg-mint-100 text-mint-800 text-xs font-bold">${escapeHtml(deck.difficulty || 'Cơ bản')}</span>
+                            <button onclick="deleteDeck('${deck.id}')" class="p-1.5 rounded-xl text-mint-400 hover:text-rose-500 hover:bg-rose-50 transition" title="Xóa bộ đề">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <h3 class="font-bold text-base text-mint-950 line-clamp-2 group-hover:text-mint-600 transition">${escapeHtml(deck.title)}</h3>
+                        <div class="flex items-center gap-3 text-xs font-semibold text-mint-600">
+                            <span class="flex items-center gap-1"><i data-lucide="help-circle" class="w-3.5 h-3.5"></i> ${qCount} câu</span>
+                            <span>•</span>
+                            <span class="flex items-center gap-1"><i data-lucide="calendar" class="w-3.5 h-3.5"></i> ${dateStr}</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 mt-4 border-t-2 border-mint-100 flex items-center justify-between gap-2">
+                        ${scoreBadge}
+                        <button onclick="openDeckById('${deck.id}')" class="px-4 py-2 rounded-2xl bg-mint-500 hover:bg-mint-600 text-white text-xs font-extrabold flex items-center gap-1.5 transition shadow-sm">
+                            <i data-lucide="play" class="w-3.5 h-3.5"></i> Ôn tập ngay
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            lucide.createIcons();
+        };
+
+        window.openDeckById = function(deckId) {
+            const found = decksList.find(d => d.id === deckId);
+            if (found) openQuizSession(found);
+        };
+
+        window.deleteDeck = async function(deckId) {
+            const confirmed = await showConfirm("Xóa bộ đề trắc nghiệm", "Bạn có chắc muốn xóa bộ đề này khỏi kho lưu trữ không?");
+            if (!confirmed) return;
+
+            if (db && currentUser && !deckId.startsWith('local_')) {
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'decks', deckId));
+            } else {
+                decksList = decksList.filter(d => d.id !== deckId);
+                renderLibrary();
+            }
+            showToast("Đã xóa bộ đề.", "info");
+        };
+
+        // ==================== STREAK & NHẮC NHỞ HỌC BÀI HÀNG NGÀY ====================
+        function getTodayDateString() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function getYesterdayDateString() {
+            const d = new Date();
+            d.setDate(d.getDate() - 1);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function validateStreakContinuity() {
+            const today = getTodayDateString();
+            const yesterday = getYesterdayDateString();
+            if (userProfile.lastStudyDate && userProfile.lastStudyDate !== today && userProfile.lastStudyDate !== yesterday) {
+                userProfile.streak = 0;
+            }
+        }
+
+        async function recordDailyStudyStreak() {
+            const today = getTodayDateString();
+            const yesterday = getYesterdayDateString();
+
+            if (userProfile.lastStudyDate === today) return;
+
+            if (userProfile.lastStudyDate === yesterday) {
+                userProfile.streak = (userProfile.streak || 0) + 1;
+            } else {
+                userProfile.streak = 1;
+            }
+
+            userProfile.lastStudyDate = today;
+            userProfile.bestStreak = Math.max(userProfile.bestStreak || 0, userProfile.streak);
+
+            const history = new Set(userProfile.studyHistoryDates || []);
+            history.add(today);
+            userProfile.studyHistoryDates = Array.from(history).slice(-30);
+
+            renderStreakUI();
+            showToast(`🔥 Tuyệt vời! Chuỗi ngày học của bạn đạt ${userProfile.streak} ngày liên tục!`, "success");
+        }
+
+        function renderStreakUI() {
+            const streak = userProfile.streak || 0;
+            const best = userProfile.bestStreak || 0;
+            const today = getTodayDateString();
+            const studiedToday = userProfile.lastStudyDate === today;
+
+            document.getElementById('header-streak-count').textContent = streak;
+            document.getElementById('big-streak-number').textContent = streak;
+            document.getElementById('best-streak-number').textContent = `${best} ngày`;
+            document.getElementById('stat-streak-days').textContent = `${streak} ngày`;
+
+            document.getElementById('streak-status-text').textContent = studiedToday
+                ? "✅ Bạn đã hoàn thành mục tiêu học tập hôm nay!"
+                : "⏳ Hoàn thành 1 bài trắc nghiệm hôm nay để giữ lửa!";
+
+            const weekGrid = document.getElementById('weekly-streak-grid');
+            weekGrid.innerHTML = '';
+            const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+            const historySet = new Set(userProfile.studyHistoryDates || []);
+
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                const isDone = historySet.has(dateStr);
+                const isToday = i === 0;
+
+                const cell = document.createElement('div');
+                cell.className = `flex flex-col items-center p-2.5 rounded-2xl border-2 ${
+                    isDone
+                        ? 'bg-orange-100 border-orange-300 text-orange-700'
+                        : isToday
+                            ? 'bg-mint-100 border-mint-400 text-mint-900'
+                            : 'bg-mint-50/70 border-mint-100 text-mint-400'
+                }`;
+                cell.innerHTML = `
+                    <span class="text-[11px] font-extrabold">${dayNames[d.getDay()]}</span>
+                    <div class="my-1.5">
+                        ${isDone
+                            ? '<i data-lucide="flame" class="w-5 h-5 fill-orange-500 text-orange-500"></i>'
+                            : '<i data-lucide="sprout" class="w-5 h-5 opacity-40"></i>'}
+                    </div>
+                    <span class="text-[10px] font-bold">${d.getDate()}/${d.getMonth() + 1}</span>
+                `;
+                weekGrid.appendChild(cell);
+            }
+            lucide.createIcons();
+        }
+
+        function syncReminderUI() {
+            document.getElementById('reminder-time-input').value = userProfile.reminderTime || '20:00';
+            document.getElementById('reminder-enabled-toggle').checked = userProfile.reminderEnabled !== false;
+            updateNotificationPermissionBadge();
+        }
+
+        window.saveReminderSettings = async function() {
+            userProfile.reminderTime = document.getElementById('reminder-time-input').value || '20:00';
+            userProfile.reminderEnabled = document.getElementById('reminder-enabled-toggle').checked;
+
+            showToast(`Đã lưu lịch nhắc học vào lúc ${userProfile.reminderTime} mỗi ngày.`, "success");
+            await saveUserProfileToCloud();
+        };
+
+        function updateNotificationPermissionBadge() {
+            const badge = document.getElementById('notif-permission-badge');
+            if (!("Notification" in window)) {
+                badge.textContent = "Trình duyệt không hỗ trợ";
+                badge.className = "px-3 py-1 rounded-full bg-rose-100 text-rose-700 font-bold";
+                return;
+            }
+            if (Notification.permission === 'granted') {
+                badge.textContent = "Đã cấp quyền (Sẵn sàng)";
+                badge.className = "px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 font-bold";
+            } else if (Notification.permission === 'denied') {
+                badge.textContent = "Đã bị chặn trong cài đặt";
+                badge.className = "px-3 py-1 rounded-full bg-rose-100 text-rose-700 font-bold";
+            } else {
+                badge.textContent = "Chưa bật thông báo";
+                badge.className = "px-3 py-1 rounded-full bg-amber-100 text-amber-800 font-bold";
+            }
+        }
+
+        window.requestNotificationPermission = async function() {
+            if (!("Notification" in window)) {
+                showToast("Trình duyệt của bạn không hỗ trợ Web Notification.", "error");
+                return;
+            }
+            const perm = await Notification.requestPermission();
+            updateNotificationPermissionBadge();
+            if (perm === 'granted') {
+                showToast("Đã bật thông báo nhắc học thành công!", "success");
+            } else {
+                showToast("Bạn chưa cấp quyền thông báo. Vui lòng mở khóa thông báo trên thanh địa chỉ trình duyệt.", "error");
+            }
+        };
+
+        function playCutePopSound(freq = 660) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(freq * 1.35, ctx.currentTime + 0.18);
+                gain.gain.setValueAtTime(0.14, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.45);
+            } catch (e) { /* Bỏ qua nếu chưa tương tác audio */ }
+        }
+
+        window.sendTestNotification = async function() {
+            playCutePopSound(660);
+            const title = "🌿 Khu vườn SmartStudy đang chờ bạn tưới nước!";
+            const body = `Chuỗi học tập: ${userProfile.streak || 0} ngày. Làm nhanh 5 câu trắc nghiệm để nhận giọt nước nhé!`;
+
+            showToast(body, "info");
+
+            if ("Notification" in window) {
+                if (Notification.permission === 'granted') {
+                    new Notification(title, { body });
+                } else if (Notification.permission !== 'denied') {
+                    const perm = await Notification.requestPermission();
+                    updateNotificationPermissionBadge();
+                    if (perm === 'granted') {
+                        new Notification(title, { body });
+                    }
+                }
+            }
+        };
+
+        function startReminderClockLoop() {
+            setInterval(() => {
+                const now = new Date();
+                const timeStr = userProfile.reminderTime || '20:00';
+                const [targetH, targetM] = timeStr.split(':').map(Number);
+
+                const target = new Date();
+                target.setHours(targetH, targetM, 0, 0);
+
+                const currentHM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                if (userProfile.reminderEnabled && currentHM === timeStr && now.getSeconds() === 0 && lastNotifiedMinute !== currentHM) {
+                    lastNotifiedMinute = currentHM;
+                    sendTestNotification();
+                }
+
+                if (target <= now) {
+                    target.setDate(target.getDate() + 1);
+                }
+
+                const diffMs = target - now;
+                const hrs = String(Math.floor(diffMs / 3600000)).padStart(2, '0');
+                const mins = String(Math.floor((diffMs % 3600000) / 60000)).padStart(2, '0');
+                const secs = String(Math.floor((diffMs % 60000) / 1000)).padStart(2, '0');
+
+                const formatted = userProfile.reminderEnabled ? `${hrs}:${mins}:${secs}` : 'Đang tắt';
+                document.getElementById('mini-countdown').textContent = formatted;
+                document.getElementById('main-countdown-clock').textContent = formatted;
+            }, 1000);
+        }
+
+        // ==================== ĐIỀU HƯỚNG TAB & TIỆN ÍCH UI ====================
+        window.switchTab = function(tabName) {
+            const tabs = ['garden', 'create', 'quiz', 'library', 'reminder'];
+            tabs.forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+            });
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+
+            ['garden', 'create', 'library', 'reminder'].forEach(t => {
+                const btn = document.getElementById(`nav-${t}`);
+                const mobBtn = document.getElementById(`mob-nav-${t}`);
+                if (t === tabName) {
+                    btn.className = 'nav-btn active flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition bg-mint-500 text-white shadow-sm';
+                    mobBtn.className = 'mob-nav-btn flex-1 flex flex-col items-center py-1 rounded-xl text-xs font-bold text-mint-600';
+                } else {
+                    btn.className = 'nav-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-mint-700 hover:text-mint-900 hover:bg-white/60 transition';
+                    mobBtn.className = 'mob-nav-btn flex-1 flex flex-col items-center py-1 rounded-xl text-xs font-bold text-mint-800/60';
+                }
+            });
+
+            lucide.createIcons();
+        };
+
+        window.showToast = function(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const colors = {
+                success: 'bg-emerald-50 border-emerald-300 text-emerald-900',
+                error: 'bg-rose-50 border-rose-300 text-rose-900',
+                info: 'bg-white border-mint-300 text-mint-900'
+            };
+            const icons = {
+                success: 'check-circle-2',
+                error: 'alert-circle',
+                info: 'sprout'
+            };
+
+            toast.className = `pointer-events-auto p-3.5 rounded-2xl border-2 ${colors[type] || colors.info} shadow-lg backdrop-blur-md flex items-start gap-3 text-sm font-bold transition-all transform translate-y-2 opacity-0`;
+            toast.innerHTML = `
+                <i data-lucide="${icons[type] || 'sprout'}" class="w-5 h-5 shrink-0 mt-0.5 text-mint-600"></i>
+                <div class="flex-1 leading-snug">${escapeHtml(message)}</div>
+            `;
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        };
+
+        function showConfirm(title, message) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirm-modal');
+                document.getElementById('confirm-title').textContent = title;
+                document.getElementById('confirm-message').textContent = message;
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+
+                const cleanup = (result) => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    resolve(result);
+                };
+
+                document.getElementById('confirm-ok-btn').onclick = () => cleanup(true);
+                document.getElementById('confirm-cancel-btn').onclick = () => cleanup(false);
+            });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Khởi chạy ứng dụng
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            updateNotificationPermissionBadge();
+            renderStreakUI();
+            startReminderClockLoop();
+            initFirebase();
+        });
+    </script>
+</body>
+</html>
